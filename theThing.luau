@@ -15,8 +15,8 @@ print("loading")
 
 --Events
 local Events = game:GetService("ReplicatedStorage").RemoteFunctions
-local SkipWave = Events.SkipWave
-local ChangeTickSpeed = Events.ChangeTickSpeed
+local SkipWaveEvent = Events.SkipWave
+local ChangeTickSpeedEvent = Events.ChangeTickSpeed
 -- holding tool
 function selectedUnit()
 	local player = game:GetService("Players").LocalPlayer
@@ -65,10 +65,10 @@ game.Workspace:GetAttribute("CanSkipWave")
 game.Workspace:GetAttribute("CanChangeTickSpeed")
 
 -- skip wave
--- local skipSuccess = SkipWave:InvokeServer("y")
+-- local skipSuccess = SkipWaveEvent:InvokeServer("y")
 
 -- change tick speed
--- local changeSuccess = ChangeTickSpeed:InvokeServer(2)
+-- local changeSuccess = ChangeTickSpeedEvent:InvokeServer(2)
 
 -- UI Setup
 local CoreGui = game:GetService("CoreGui")
