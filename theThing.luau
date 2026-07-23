@@ -3,7 +3,7 @@ local Helper = require(player.PlayerGui.LogicHolder.ClientLoader.Modules.SharedH
 local TowerDefense = require(player.PlayerGui.LogicHolder.ClientLoader.Modules.SharedTowerDefenseHandler)
 local Entities = workspace.Map.Entities -- .UnitId
 
-local SkipWave = player.PlayerGui.GameGuiNoInset.Screen.Top.SkipWave.Button -- image button
+local SkipWaveButton = player.PlayerGui.GameGuiNoInset.Screen.Top.SkipWave.Button -- image button
 local AutoSkipButton = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.AutoSkip -- image button
 local Speed1 = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.TickSpeed.Items["1"] -- image button
 local Speed2 = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.TickSpeed.Items["2"] -- image button
@@ -137,7 +137,7 @@ local function addRecord(actionType, data)
 	print(string.format("Recorded %s | Delay: %.2f", actionType, delayTime))
 end
 
-table.insert(buttonConns, SkipWave.Activated:Connect(function() addRecord("SkipWave") end))
+table.insert(buttonConns, SkipWaveButton.Activated:Connect(function() addRecord("SkipWave") end))
 table.insert(buttonConns, AutoSkipButton.Activated:Connect(function()
 	autoSkipState = not autoSkipState
 	addRecord("AutoSkip", { state = autoSkipState })
