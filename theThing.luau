@@ -106,9 +106,21 @@ statusLabel.Font = Enum.Font.GothamBold
 statusLabel.Text = "Status: Idle"
 statusLabel.Parent = macroGui
 
+local timerLabel = Instance.new("TextLabel")
+timerLabel.Size = UDim2.new(0, 200, 0, 25)
+timerLabel.Position = UDim2.new(1, -220, 0.5, -65)
+timerLabel.AnchorPoint = Vector2.new(0, 0)
+timerLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+timerLabel.BackgroundTransparency = 0.5
+timerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+timerLabel.TextScaled = true
+timerLabel.Font = Enum.Font.Gotham
+timerLabel.Text = "Time: 00:00:00"
+timerLabel.Parent = macroGui
+
 local managerFrame = Instance.new("ScrollingFrame")
-managerFrame.Size = UDim2.new(0, 200, 0, 175)
-managerFrame.Position = UDim2.new(1, -220, 0.5, -60)
+managerFrame.Size = UDim2.new(0, 200, 0, 150)
+managerFrame.Position = UDim2.new(1, -220, 0.5, -40)
 managerFrame.AnchorPoint = Vector2.new(0, 0)
 managerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 managerFrame.BackgroundTransparency = 0.3
@@ -237,6 +249,20 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			isPlayingMacro = true
 			statusLabel.Text = "Status: Playing Macro"
 			print("Starting macro playback...")
+			
+			local sessionStartTime = tick()
+			task.spawn(function()
+				while isPlayingMacro do
+					local elapsed = tick() - sessionStartTime
+					local hours = math.floor(elapsed / 3600)
+					local mins = math.floor((elapsed % 3600) / 60)
+					local secs = math.floor(elapsed % 60)
+					timerLabel.Text = string.format("Time: %02d:%02d:%02d", hours, mins, secs)
+					task.wait(1)
+				end
+				timerLabel.Text = "Time: 00:00:00"
+			end)
+			
 			task.spawn(function()
 				while isPlayingMacro do
 					print("Starting new macro run...")
