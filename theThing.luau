@@ -2,6 +2,7 @@ local player = game:GetService("Players").LocalPlayer
 local Helper = require(player.PlayerGui.LogicHolder.ClientLoader.Modules.SharedHelper)
 local TowerDefense = require(player.PlayerGui.LogicHolder.ClientLoader.Modules.SharedTowerDefenseHandler)
 local Entities = workspace.Map.Entities -- .UnitId
+local Config = player.PlayerGui.LogicHolder.ClientLoader.SharedConfig.ItemData.Units.Configs -- .UnitId | require this with .UnitId, they're ModuleScript
 
 local SkipWaveButton = player.PlayerGui.GameGuiNoInset.Screen.Top.SkipWave.Button -- image button
 local AutoSkipButton = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.AutoSkip -- image button
@@ -80,8 +81,8 @@ macroGui.Parent = guiParent
 
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(0, 200, 0, 50)
-statusLabel.Position = UDim2.new(1, -220, 0.5, 0)
-statusLabel.AnchorPoint = Vector2.new(0, 0.5)
+statusLabel.Position = UDim2.new(1, -220, 0.5, -115)
+statusLabel.AnchorPoint = Vector2.new(0, 0)
 statusLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 statusLabel.BackgroundTransparency = 0.5
 statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -91,8 +92,8 @@ statusLabel.Text = "Status: Idle"
 statusLabel.Parent = macroGui
 
 local managerFrame = Instance.new("ScrollingFrame")
-managerFrame.Size = UDim2.new(0, 200, 0, 300)
-managerFrame.Position = UDim2.new(1, -220, 0.5, 60)
+managerFrame.Size = UDim2.new(0, 200, 0, 175)
+managerFrame.Position = UDim2.new(1, -220, 0.5, -60)
 managerFrame.AnchorPoint = Vector2.new(0, 0)
 managerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 managerFrame.BackgroundTransparency = 0.3
@@ -210,11 +211,26 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 							local upgBtn = Instance.new("TextButton")
 							upgBtn.Size = UDim2.new(0.4, -5, 1, -10)
 							upgBtn.Position = UDim2.new(0.6, 0, 0, 5)
-							upgBtn.Text = "Upg"
 							upgBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 100)
 							upgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 							upgBtn.TextScaled = true
 							upgBtn.Parent = card
+							
+							local unitLevel = 1
+							local function updateUpgText()
+								local uConfig = Config:FindFirstChild(unit)
+								if uConfig then
+									local sCfg, cfgData = pcall(require, uConfig)
+									if sCfg and cfgData and cfgData.UnitConfig and cfgData.UnitConfig.Upgrades and cfgData.UnitConfig.Upgrades[unitLevel-1] then
+										upgBtn.Text = tostring(cfgData.UnitConfig.Upgrades[unitLevel-1].Cost)
+									else
+										upgBtn.Text = "Max"
+									end
+								else
+									upgBtn.Text = "Max"
+								end
+							end
+							updateUpgText()
 							
 							local highlight
 							card.MouseEnter:Connect(function()
@@ -237,6 +253,8 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 							upgBtn.Activated:Connect(function()
 								local s, level = TowerDefense.UpgradeUnit(id)
 								if s then
+									unitLevel = level
+									updateUpgText()
 									addRecord("UpgradeUnit", { id = id, level = level, unit = unit })
 								end
 							end)
