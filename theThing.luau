@@ -14,34 +14,19 @@ print("loading")
 
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
-local recordedPlacements = {
-	dif = "dif_normal",
-	{type = "PlaceUnit", unit = "unit_cactus", id = 16, position = Vector3.new(-326.893, 61.680, -128.473), rotation = -180},
-	{type = "PlaceUnit", unit = "unit_cactus", id = 17, position = Vector3.new(-327.793, 61.680, -130.353), rotation = -180},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 30, position = Vector3.new(-325.536, 61.680, -126.300), rotation = -180},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 45, position = Vector3.new(-327.780, 61.680, -125.529), rotation = -180},
-	{type = "PlaceUnit", unit = "unit_cactus", id = 46, position = Vector3.new(-330.024, 61.680, -130.245), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 30, level = 2},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 2},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 75, position = Vector3.new(-324.840, 61.680, -132.612), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 75, level = 2},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 30, level = 3},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 3},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 75, level = 3},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 30, level = 4},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 4},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 115, position = Vector3.new(-329.466, 61.680, -133.116), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 75, level = 4},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 126, position = Vector3.new(-323.185, 61.680, -121.262), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 115, level = 2},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 126, level = 2},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 115, level = 3},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 126, level = 3},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 115, level = 4},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 126, level = 4},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 30, level = 5},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 5},
-}
+local configsUrl = "https://raw.githubusercontent.com/Squarewagon/yeah/refs/heads/main/placements.luau"
+local macroConfigs = {}
+pcall(function()
+	local raw = game:HttpGet(configsUrl)
+	if raw then
+		local func = loadstring(raw)
+		if func then
+			macroConfigs = func()
+		end
+	end
+end)
+
+local recordedPlacements = {}
 
 --Events
 local FunctionEvents = game:GetService("ReplicatedStorage").RemoteFunctions
@@ -135,6 +120,57 @@ local managerList = Instance.new("UIListLayout")
 managerList.SortOrder = Enum.SortOrder.LayoutOrder
 managerList.Padding = UDim.new(0, 5)
 managerList.Parent = managerFrame
+
+local dropdownBtn = Instance.new("TextButton")
+dropdownBtn.Size = UDim2.new(0, 200, 0, 40)
+dropdownBtn.Position = UDim2.new(1, -220, 0.5, -160)
+dropdownBtn.AnchorPoint = Vector2.new(0, 0)
+dropdownBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+dropdownBtn.BackgroundTransparency = 0.3
+dropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+dropdownBtn.TextScaled = true
+dropdownBtn.Font = Enum.Font.GothamBold
+dropdownBtn.Text = "Select Macro..."
+dropdownBtn.Parent = macroGui
+
+local dropdownList = Instance.new("ScrollingFrame")
+dropdownList.Size = UDim2.new(0, 200, 0, 160)
+dropdownList.Position = UDim2.new(1, -430, 0.5, -160)
+dropdownList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+dropdownList.BackgroundTransparency = 0.1
+dropdownList.Visible = false
+dropdownList.ZIndex = 5
+dropdownList.Parent = macroGui
+
+local dropdownLayout = Instance.new("UIListLayout")
+dropdownLayout.SortOrder = Enum.SortOrder.LayoutOrder
+dropdownLayout.Parent = dropdownList
+
+dropdownLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	dropdownList.CanvasSize = UDim2.new(0, 0, 0, dropdownLayout.AbsoluteContentSize.Y)
+end)
+
+for name, data in pairs(macroConfigs) do
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, 0, 0, 40)
+	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.TextScaled = true
+	btn.Font = Enum.Font.Gotham
+	btn.Text = tostring(name)
+	btn.ZIndex = 6
+	btn.Parent = dropdownList
+	
+	btn.Activated:Connect(function()
+		recordedPlacements = data
+		dropdownBtn.Text = tostring(name)
+		dropdownList.Visible = false
+	end)
+end
+
+dropdownBtn.Activated:Connect(function()
+	dropdownList.Visible = not dropdownList.Visible
+end)
 
 -- Recording System Toggle
 local UserInputService = game:GetService("UserInputService")
@@ -519,7 +555,7 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				statusLabel.Text = "Status: Idle (Copied)"
 				print("Recording stopped!")
 				managerFrame.Visible = false
-				local output = "local recordedPlacements = {\n"
+				local output = "{\n"
 				output = output .. '\tdif = "FILL",\n'
 				for _, query in ipairs(recordedQueries) do
 					if query.type == "PlaceUnit" then
