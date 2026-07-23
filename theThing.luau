@@ -49,6 +49,7 @@ local RemoteEvents = game:GetService("ReplicatedStorage").RemoteEvents
 local ShowGameEnd = RemoteEvents.ShowGameEnd
 local SkipWave = FunctionEvents.SkipWave
 local ChangeTickSpeed = FunctionEvents.ChangeTickSpeed
+local RestartGame = FunctionEvents.RestartGame
 local PlaceDifficultyVote = FunctionEvents.PlaceDifficultyVote
 
 -- holding tool
@@ -326,6 +327,8 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					if isPlayingMacro then
 						print("Game Ended! Voting difficulty to restart...")
 						local dif = recordedPlacements.dif or "dif_easy"
+						pcall(function() RestartGame:InvokeServer() end)
+						task.wait(1)
 						pcall(function() PlaceDifficultyVote:InvokeServer(dif) end)
 						task.wait(15) -- Give the server time to process restart before hitting the loop again
 					end
@@ -338,18 +341,16 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			if unit then
 				local effectNode = EffectHolder:FindFirstChild(unit)
 				if effectNode then
-					local rangeDisplay = effectNode:FindFirstChild("RangeDisplay")
-					if rangeDisplay then
-						local CF = rangeDisplay.CFrame
-						local rot = math.round(math.deg(math.atan2(-CF.LookVector.X, -CF.LookVector.Z)))
-						local placementTable = {
-							CF = CF,
-							Rotation = rot,
-							Valid = true,
-							Position = CF.Position,
-						}
-						local success, id = TowerDefense.PlaceUnit(unit, placementTable)
-						if success then
+					local CF = effectNode:GetPivot()
+					local rot = math.round(math.deg(math.atan2(-CF.LookVector.X, -CF.LookVector.Z)))
+					local placementTable = {
+						CF = CF,
+						Rotation = rot,
+						Valid = true,
+						Position = CF.Position,
+					}
+					local success, id = TowerDefense.PlaceUnit(unit, placementTable)
+					if success then
 							addRecord("PlaceUnit", {
 								unit = unit,
 								id = id,
@@ -459,7 +460,6 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						end
 					end
 				end
-			end
 		end
 	end
 end)
