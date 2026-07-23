@@ -15,6 +15,7 @@ print("loading")
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
 local recordedPlacements = {
+	dif = "dif_easy",
 	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 2, position = Vector3.new(-331.864, 61.680, -133.884), rotation = -180},
 	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 4, position = Vector3.new(-331.283, 61.680, -131.468), rotation = -180},
 	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 2},
@@ -43,9 +44,13 @@ local recordedPlacements = {
 }
 
 --Events
-local Events = game:GetService("ReplicatedStorage").RemoteFunctions
-local SkipWave = Events.SkipWave
-local ChangeTickSpeed = Events.ChangeTickSpeed
+local FunctionEvents = game:GetService("ReplicatedStorage").RemoteFunctions
+local RemoteEvents = game:GetService("ReplicatedStorage").RemoteEvents
+local ShowGameEnd = RemoteEvents.ShowGameEnd
+local SkipWave = FunctionEvents.SkipWave
+local ChangeTickSpeed = FunctionEvents.ChangeTickSpeed
+local PlaceDifficultyVote = FunctionEvents.PlaceDifficultyVote
+
 -- holding tool
 function selectedUnit()
 	local player = game:GetService("Players").LocalPlayer
@@ -92,6 +97,9 @@ game.Workspace:GetAttribute("CanSkipWave")
 -- change tick speed
 -- local changeSuccess = ChangeTickSpeedEvent:InvokeServer(2)
 
+-- vote difficulty
+-- PlaceDifficultyVote:InvokeServer("dif_easy") -- or dif_med, etc.
+
 -- UI Setup
 local CoreGui = game:GetService("CoreGui")
 local guiParent = pcall(function() return CoreGui.Name end) and CoreGui or player:WaitForChild("PlayerGui")
@@ -137,6 +145,8 @@ local recordedQueries = {}
 local autoUpgradePool = {}
 local autoUpgradeLoopRunning = false
 
+local isPlayingMacro = false
+
 local function addRecord(actionType, data)
 	if not isRecording then return end
 	
@@ -177,116 +187,149 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			end
 		end)
 	elseif input.KeyCode == Enum.KeyCode.V then
-		if not isRecording and #recordedPlacements > 0 then
+		if isRecording then return end
+		
+		if isPlayingMacro then
+			isPlayingMacro = false
+			statusLabel.Text = "Status: Playback Stopped"
+			print("Macro playback stopped!")
+			return
+		end
+		
+		if #recordedPlacements > 0 then
+			isPlayingMacro = true
 			statusLabel.Text = "Status: Playing Macro"
 			print("Starting macro playback...")
 			task.spawn(function()
-				-- Force fast forward
-				pcall(function() ChangeTickSpeed:InvokeServer(2) end)
-				
-				local isPlaying = true
-				-- Thread to constantly AutoSkip
-				task.spawn(function()
-					while isPlaying do
-						if game.Workspace:GetAttribute("CanSkipWave") then
-							pcall(function() SkipWave:InvokeServer("y") end)
-						end
-						task.wait(0.5)
-					end
-				end)
-				
-				local idMap = {}
-				for _, action in ipairs(recordedPlacements) do
-					if action.type == "PlaceUnit" then
-						local cfg = Config:FindFirstChild(action.unit)
-						local baseCost = 0
-						if cfg then
-							local s, c = pcall(require, cfg)
-							if s and c and c.UnitConfig then
-								baseCost = c.UnitConfig.Cost or 0
+				while isPlayingMacro do
+					print("Starting new macro run...")
+					-- Force fast forward
+					pcall(function() ChangeTickSpeed:InvokeServer(2) end)
+					
+					local runActive = true
+					local gameEnded = false
+					
+					local endConn = ShowGameEnd.OnClientEvent:Connect(function()
+						gameEnded = true
+					end)
+					
+					-- Thread to constantly AutoSkip
+					task.spawn(function()
+						while runActive and isPlayingMacro and not gameEnded do
+							if game.Workspace:GetAttribute("CanSkipWave") then
+								pcall(function() SkipWave:InvokeServer("y") end)
 							end
+							task.wait(0.5)
 						end
+					end)
+					
+					local idMap = {}
+					for _, action in ipairs(recordedPlacements) do
+						if not isPlayingMacro or gameEnded then break end
 						
-						-- Wait for conditions
-						while true do
-							if player:GetAttribute("Cash") >= baseCost then
-								break
-							end
-							task.wait(0.1)
-						end
-						
-						local s, newId
-						local attempt = 0
-						while not s do
-							local offset = Vector3.new(
-								(math.random() * 2 - 1) * 1,
-								0,
-								(math.random() * 2 - 1) * 1
-							)
-							if attempt == 0 then offset = Vector3.new(0, 0, 0) end
-							
-							local testPos = action.position + offset
-							local placementTable = {
-								CF = CFrame.new(testPos) * CFrame.Angles(0, math.rad(action.rotation), 0),
-								Rotation = action.rotation,
-								Valid = true,
-								Position = testPos,
-							}
-							
-							s, newId = TowerDefense.PlaceUnit(action.unit, placementTable)
-							if s and newId then
-								idMap[action.id] = newId
-								if attempt == 0 then
-									print("Playback: Placed " .. action.unit)
-								else
-									print("Playback: Placed " .. action.unit .. " after " .. attempt .. " retries")
+						if action.type == "PlaceUnit" then
+							local cfg = Config:FindFirstChild(action.unit)
+							local baseCost = 0
+							if cfg then
+								local s, c = pcall(require, cfg)
+								if s and c and c.UnitConfig then
+									baseCost = c.UnitConfig.Cost or 0
 								end
-								task.wait(0.2) -- Allow server cash replication to catch up
-							else
-								attempt = attempt + 1
-								task.wait(0.3)
 							end
-						end
-						
-					elseif action.type == "UpgradeUnit" then
-						local cfg = Config:FindFirstChild(action.unit)
-						local upgCost = 0
-						if cfg then
-							local s, c = pcall(require, cfg)
-							if s and c and c.UnitConfig and c.UnitConfig.Upgrades and c.UnitConfig.Upgrades[action.level - 1] then
-								upgCost = c.UnitConfig.Upgrades[action.level - 1].Cost or 0
+							
+							-- Wait for conditions
+							while isPlayingMacro and not gameEnded do
+								if player:GetAttribute("Cash") >= baseCost then
+									break
+								end
+								task.wait(0.1)
 							end
-						end
-						
-						-- Wait for cash
-						while true do
-							if player:GetAttribute("Cash") >= upgCost then
-								break
-							end
-							task.wait(0.1)
-						end
-						
-						local targetId = idMap[action.id]
-						if targetId then
-							local s = false
-							while not s do
-								s = TowerDefense.UpgradeUnit(targetId)
-								if s then
-									print("Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level))
+							if not isPlayingMacro or gameEnded then break end
+							
+							local s, newId
+							local attempt = 0
+							while not s and isPlayingMacro and not gameEnded do
+								local offset = Vector3.new(
+									(math.random() * 2 - 1) * 1,
+									0,
+									(math.random() * 2 - 1) * 1
+								)
+								
+								local testPos = action.position + offset
+								local placementTable = {
+									CF = CFrame.new(testPos) * CFrame.Angles(0, math.rad(action.rotation), 0),
+									Rotation = action.rotation,
+									Valid = true,
+									Position = testPos,
+								}
+								
+								s, newId = TowerDefense.PlaceUnit(action.unit, placementTable)
+								if s and newId then
+									idMap[action.id] = newId
+									if attempt == 0 then
+										print("Playback: Placed " .. action.unit)
+									else
+										print("Playback: Placed " .. action.unit .. " after " .. attempt .. " retries")
+									end
 									task.wait(0.2) -- Allow server cash replication to catch up
 								else
+									attempt = attempt + 1
 									task.wait(0.3)
 								end
 							end
-						else
-							warn("Playback: Could not find mapped ID for upgrade " .. tostring(action.id))
+							
+						elseif action.type == "UpgradeUnit" then
+							local cfg = Config:FindFirstChild(action.unit)
+							local upgCost = 0
+							if cfg then
+								local s, c = pcall(require, cfg)
+								if s and c and c.UnitConfig and c.UnitConfig.Upgrades and c.UnitConfig.Upgrades[action.level - 1] then
+									upgCost = c.UnitConfig.Upgrades[action.level - 1].Cost or 0
+								end
+							end
+							
+							-- Wait for cash
+							while isPlayingMacro and not gameEnded do
+								if player:GetAttribute("Cash") >= upgCost then
+									break
+								end
+								task.wait(0.1)
+							end
+							if not isPlayingMacro or gameEnded then break end
+							
+							local targetId = idMap[action.id]
+							if targetId then
+								local s = false
+								while not s and isPlayingMacro and not gameEnded do
+									s = TowerDefense.UpgradeUnit(targetId)
+									if s then
+										print("Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level))
+										task.wait(0.2) -- Allow server cash replication to catch up
+									else
+										task.wait(0.3)
+									end
+								end
+							else
+								warn("Playback: Could not find mapped ID for upgrade " .. tostring(action.id))
+							end
 						end
 					end
+					
+					-- Wait for the game to actually end
+					while isPlayingMacro and not gameEnded do
+						task.wait(0.5)
+					end
+					
+					runActive = false
+					if endConn then endConn:Disconnect() end
+					
+					if isPlayingMacro then
+						print("Game Ended! Voting difficulty to restart...")
+						local dif = recordedPlacements.dif or "dif_easy"
+						pcall(function() PlaceDifficultyVote:InvokeServer(dif) end)
+						task.wait(15) -- Give the server time to process restart before hitting the loop again
+					end
 				end
-				
-				isPlaying = false
-				statusLabel.Text = "Status: Playback Finished"
-				print("Macro playback finished!")
 			end)
 		end
 	elseif input.KeyCode == Enum.KeyCode.F then
@@ -477,6 +520,7 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				print("Recording stopped!")
 				managerFrame.Visible = false
 				local output = "local recordedPlacements = {\n"
+				output = output .. '\tdif = "FILL",\n'
 				for _, query in ipairs(recordedQueries) do
 					if query.type == "PlaceUnit" then
 						output = output .. string.format('\t{type = "PlaceUnit", unit = "%s", id = %d, position = Vector3.new(%.3f, %.3f, %.3f), rotation = %d},\n', query.unit, query.id, query.position.X, query.position.Y, query.position.Z, query.rotation)
