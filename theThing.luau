@@ -15,19 +15,31 @@ print("loading")
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
 local recordedPlacements = {
-	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 3, delay = 0.000, position = Vector3.new(-332.021, 61.680, -133.942), rotation = 180},
-	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 4, delay = 3.933, position = Vector3.new(-331.659, 61.680, -131.058), rotation = 180},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 11, delay = 41.332, position = Vector3.new(-326.986, 61.680, -129.487), rotation = 180},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 21, delay = 22.899, position = Vector3.new(-328.682, 61.680, -127.243), rotation = 180},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 32, delay = 13.849, position = Vector3.new(-328.087, 61.680, -124.466), rotation = 180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 21, level = 2, delay = 16.399},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 32, level = 2, delay = 16.316},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 11, level = 2, delay = 9.583},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 32, level = 3, delay = 19.433},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 21, level = 3, delay = 10.383},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 58, delay = 4.217, position = Vector3.new(-327.926, 61.680, -121.759), rotation = 180},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 59, delay = 0.783, position = Vector3.new(-328.468, 61.680, -117.893), rotation = 180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 58, level = 2, delay = 4.185},
+	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 2, position = Vector3.new(-331.864, 61.680, -133.884), rotation = -180},
+	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 4, position = Vector3.new(-331.283, 61.680, -131.468), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 2},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 4, level = 2},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 3},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 4, level = 3},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 4},
+	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 20, position = Vector3.new(-331.364, 61.680, -128.752), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 20, level = 2},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 20, level = 3},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 4, level = 4},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 20, level = 4},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 5},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 4, level = 5},
+	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 20, level = 5},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 45, position = Vector3.new(-326.327, 61.680, -128.643), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 2},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 52, position = Vector3.new(-326.137, 61.680, -126.581), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 52, level = 2},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 57, position = Vector3.new(-328.657, 61.680, -124.570), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 57, level = 2},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 59, position = Vector3.new(-328.262, 61.680, -128.002), rotation = -180},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 60, position = Vector3.new(-327.246, 61.680, -131.190), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 59, level = 2},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 60, level = 2},
 }
 
 --Events
@@ -122,19 +134,13 @@ local gPressTime = 0
 local gHeld = false
 
 local recordedQueries = {}
-local lastQueryTime = 0
 local autoUpgradePool = {}
 local autoUpgradeLoopRunning = false
+
 local function addRecord(actionType, data)
 	if not isRecording then return end
-	local currentTime = tick()
-	local delayTime = 0
-	if #recordedQueries > 0 then
-		delayTime = currentTime - lastQueryTime
-	end
-	lastQueryTime = currentTime
 	
-	local query = { type = actionType, delay = delayTime }
+	local query = { type = actionType }
 	if data then
 		for k, v in pairs(data) do
 			query[k] = v
@@ -143,7 +149,7 @@ local function addRecord(actionType, data)
 	table.insert(recordedQueries, query)
 	
 	statusLabel.Text = "Recorded: " .. actionType
-	print(string.format("Recorded %s | Delay: %.2f", actionType, delayTime))
+	print(string.format("Recorded %s", actionType))
 end
 
 local inputBeganConn
@@ -473,9 +479,9 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				local output = "local recordedPlacements = {\n"
 				for _, query in ipairs(recordedQueries) do
 					if query.type == "PlaceUnit" then
-						output = output .. string.format('\t{type = "PlaceUnit", unit = "%s", id = %d, delay = %.3f, position = Vector3.new(%.3f, %.3f, %.3f), rotation = %d},\n', query.unit, query.id, query.delay, query.position.X, query.position.Y, query.position.Z, query.rotation)
+						output = output .. string.format('\t{type = "PlaceUnit", unit = "%s", id = %d, position = Vector3.new(%.3f, %.3f, %.3f), rotation = %d},\n', query.unit, query.id, query.position.X, query.position.Y, query.position.Z, query.rotation)
 					elseif query.type == "UpgradeUnit" then
-						output = output .. string.format('\t{type = "UpgradeUnit", unit = "%s", id = %d, level = %d, delay = %.3f},\n', query.unit, query.id, query.level, query.delay)
+						output = output .. string.format('\t{type = "UpgradeUnit", unit = "%s", id = %d, level = %d},\n', query.unit, query.id, query.level)
 					end
 				end
 				output = output .. "}"
