@@ -55,37 +55,6 @@ function selectedUnit()
 	return nil
 end
 
--- place unit
--- (Moved to F keybind in recording system)
---[[
-local unit = selectedUnit()
-local CF = EffectHolder:FindFirstChild(unit):FindFirstChild("RangeDisplay").CFrame
-local table = {
-	CF = CF,
-	Rotation = math.round(math.deg(math.atan2(-CF.LookVector.X, -CF.LookVector.Z))),
-	Valid = true,
-	Position = CF.Position,
-}
-local success, id = TowerDefense.PlaceUnit(unit, table)
-
--- upgrade unit
-local success, level = TowerDefense.UpgradeUnit(id)
---]]
-
--- cash
-player:GetAttribute("Cash")
-
--- can skip wave?
-game.Workspace:GetAttribute("CanSkipWave")
--- skip wave
--- local skipSuccess = SkipWaveEvent:InvokeServer("y")
-
--- change tick speed
--- local changeSuccess = ChangeTickSpeedEvent:InvokeServer(2)
-
--- vote difficulty
--- PlaceDifficultyVote:InvokeServer("dif_easy") -- or dif_normal or dif_hard
-
 -- UI Setup
 local CoreGui = game:GetService("CoreGui")
 local guiParent = pcall(function() return CoreGui.Name end) and CoreGui or player:WaitForChild("PlayerGui")
