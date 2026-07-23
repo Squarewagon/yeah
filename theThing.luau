@@ -61,6 +61,26 @@ game.Workspace:GetAttribute("CanChangeTickSpeed")
 -- change tick speed
 -- local changeSuccess = ChangeTickSpeed:InvokeServer(2)
 
+-- UI Setup
+local CoreGui = game:GetService("CoreGui")
+local guiParent = pcall(function() return CoreGui.Name end) and CoreGui or player:WaitForChild("PlayerGui")
+local macroGui = Instance.new("ScreenGui")
+macroGui.Name = "MacroStatusUI"
+macroGui.ResetOnSpawn = false
+macroGui.Parent = guiParent
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(0, 200, 0, 50)
+statusLabel.Position = UDim2.new(1, -220, 0.5, 0)
+statusLabel.AnchorPoint = Vector2.new(0, 0.5)
+statusLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+statusLabel.BackgroundTransparency = 0.5
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+statusLabel.TextScaled = true
+statusLabel.Font = Enum.Font.GothamBold
+statusLabel.Text = "Status: Idle"
+statusLabel.Parent = macroGui
+
 -- Recording System Toggle
 local UserInputService = game:GetService("UserInputService")
 local isRecording = false
@@ -85,6 +105,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					print("deleted")
 					if inputBeganConn then inputBeganConn:Disconnect() end
 					if inputEndedConn then inputEndedConn:Disconnect() end
+					if macroGui then macroGui:Destroy() end
 					if script then
 						script:Destroy()
 					end
@@ -124,6 +145,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								position = CF.Position,
 								rotation = rot
 							})
+							statusLabel.Text = "Recorded: " .. tostring(unit)
 							print(string.format("Recorded %s | Delay: %.2f", unit, delayTime))
 						end
 					end
@@ -139,9 +161,11 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 		if gHeld and (tick() - gPressTime < 2) then
 			isRecording = not isRecording
 			if isRecording then
+				statusLabel.Text = "Status: Recording"
 				print("Recording started!")
 				recordedQueries = {}
 			else
+				statusLabel.Text = "Status: Idle (Copied)"
 				print("Recording stopped!")
 				local output = "local recordedPlacements = {\n"
 				for _, query in ipairs(recordedQueries) do
