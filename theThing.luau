@@ -244,8 +244,8 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						local upgCost = 0
 						if cfg then
 							local s, c = pcall(require, cfg)
-							if s and c and c.UnitConfig and c.UnitConfig.Upgrades and c.UnitConfig.Upgrades[action.level] then
-								upgCost = c.UnitConfig.Upgrades[action.level].Cost or 0
+							if s and c and c.UnitConfig and c.UnitConfig.Upgrades and c.UnitConfig.Upgrades[action.level - 1] then
+								upgCost = c.UnitConfig.Upgrades[action.level - 1].Cost or 0
 							end
 						end
 						
