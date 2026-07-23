@@ -32,8 +32,8 @@ local recordedPlacements = {
 
 --Events
 local Events = game:GetService("ReplicatedStorage").RemoteFunctions
-local SkipWaveEvent = Events.SkipWave
-local ChangeTickSpeedEvent = Events.ChangeTickSpeed
+local SkipWave = Events.SkipWave
+local ChangeTickSpeed = Events.ChangeTickSpeed
 -- holding tool
 function selectedUnit()
 	local player = game:GetService("Players").LocalPlayer
@@ -72,15 +72,8 @@ local success, level = TowerDefense.UpgradeUnit(id)
 -- cash
 player:GetAttribute("Cash")
 
--- can place units?
-game.Workspace:GetAttribute("CanPlaceUnits")
-
 -- can skip wave?
 game.Workspace:GetAttribute("CanSkipWave")
-
--- can change tick speed?
-game.Workspace:GetAttribute("CanChangeTickSpeed")
-
 -- skip wave
 -- local skipSuccess = SkipWaveEvent:InvokeServer("y")
 
@@ -208,7 +201,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						
 						-- Wait for conditions
 						while true do
-							if game.Workspace:GetAttribute("CanPlaceUnits") and player:GetAttribute("Cash") >= baseCost then
+							if player:GetAttribute("Cash") >= baseCost then
 								break
 							end
 							task.wait(0.1)
