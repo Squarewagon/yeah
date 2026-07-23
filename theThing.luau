@@ -14,7 +14,21 @@ print("loading")
 
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
-local recordedPlacements = {} -- Paste your recording here!
+local recordedPlacements = {
+	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 3, delay = 0.000, position = Vector3.new(-332.021, 61.680, -133.942), rotation = 180},
+	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 4, delay = 3.933, position = Vector3.new(-331.659, 61.680, -131.058), rotation = 180},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 11, delay = 41.332, position = Vector3.new(-326.986, 61.680, -129.487), rotation = 180},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 21, delay = 22.899, position = Vector3.new(-328.682, 61.680, -127.243), rotation = 180},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 32, delay = 13.849, position = Vector3.new(-328.087, 61.680, -124.466), rotation = 180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 21, level = 2, delay = 16.399},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 32, level = 2, delay = 16.316},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 11, level = 2, delay = 9.583},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 32, level = 3, delay = 19.433},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 21, level = 3, delay = 10.383},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 58, delay = 4.217, position = Vector3.new(-327.926, 61.680, -121.759), rotation = 180},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 59, delay = 0.783, position = Vector3.new(-328.468, 61.680, -117.893), rotation = 180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 58, level = 2, delay = 4.185},
+}
 
 --Events
 local Events = game:GetService("ReplicatedStorage").RemoteFunctions
