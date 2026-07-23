@@ -123,6 +123,8 @@ local gHeld = false
 
 local recordedQueries = {}
 local lastQueryTime = 0
+local autoUpgradePool = {}
+local autoUpgradeLoopRunning = false
 local function addRecord(actionType, data)
 	if not isRecording then return end
 	local currentTime = tick()
@@ -233,6 +235,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								else
 									print("Playback: Placed " .. action.unit .. " after " .. attempt .. " retries")
 								end
+								task.wait(0.2) -- Allow server cash replication to catch up
 							else
 								attempt = attempt + 1
 								task.wait(0.3)
@@ -264,6 +267,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								s = TowerDefense.UpgradeUnit(targetId)
 								if s then
 									print("Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level))
+									task.wait(0.2) -- Allow server cash replication to catch up
 								else
 									task.wait(0.3)
 								end
@@ -309,29 +313,62 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 							card.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 							card.Parent = managerFrame
 							
+							local dispName = tostring(unit)
+							local uConfig = Config:FindFirstChild(unit)
+							if uConfig then
+								local s, c = pcall(require, uConfig)
+								if s and c and c.Name then
+									dispName = c.Name
+								end
+							end
+							
 							local nameLbl = Instance.new("TextLabel")
-							nameLbl.Size = UDim2.new(0.6, 0, 1, 0)
+							nameLbl.Size = UDim2.new(0.5, 0, 1, 0)
 							nameLbl.BackgroundTransparency = 1
-							nameLbl.Text = tostring(unit)
+							nameLbl.Text = dispName
 							nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
 							nameLbl.TextScaled = true
 							nameLbl.Parent = card
 							
+							local autoBtn = Instance.new("TextButton")
+							autoBtn.Size = UDim2.new(0.2, 0, 1, -10)
+							autoBtn.Position = UDim2.new(0.5, 0, 0, 5)
+							autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+							autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+							autoBtn.Text = "Auto"
+							autoBtn.TextScaled = true
+							autoBtn.Parent = card
+							
 							local upgBtn = Instance.new("TextButton")
-							upgBtn.Size = UDim2.new(0.4, -5, 1, -10)
-							upgBtn.Position = UDim2.new(0.6, 0, 0, 5)
+							upgBtn.Size = UDim2.new(0.3, -5, 1, -10)
+							upgBtn.Position = UDim2.new(0.7, 0, 0, 5)
 							upgBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 100)
 							upgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 							upgBtn.TextScaled = true
 							upgBtn.Parent = card
 							
-							local unitLevel = 1
+							local poolData = {
+								id = id,
+								unitName = unit,
+								unitLevel = 1,
+								active = false
+							}
+							table.insert(autoUpgradePool, poolData)
+							
+							autoBtn.Activated:Connect(function()
+								poolData.active = not poolData.active
+								if poolData.active then
+									autoBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+								else
+									autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+								end
+							end)
+							
 							local function updateUpgText()
-								local uConfig = Config:FindFirstChild(unit)
 								if uConfig then
 									local sCfg, cfgData = pcall(require, uConfig)
-									if sCfg and cfgData and cfgData.UnitConfig and cfgData.UnitConfig.Upgrades and cfgData.UnitConfig.Upgrades[unitLevel] then
-										upgBtn.Text = tostring(cfgData.UnitConfig.Upgrades[unitLevel].Cost)
+									if sCfg and cfgData and cfgData.UnitConfig and cfgData.UnitConfig.Upgrades and cfgData.UnitConfig.Upgrades[poolData.unitLevel] then
+										upgBtn.Text = tostring(cfgData.UnitConfig.Upgrades[poolData.unitLevel].Cost)
 									else
 										upgBtn.Text = "Max"
 									end
@@ -339,6 +376,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 									upgBtn.Text = "Max"
 								end
 							end
+							poolData.updateUpgText = updateUpgText
 							updateUpgText()
 							
 							local highlight
@@ -362,7 +400,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 							upgBtn.Activated:Connect(function()
 								local s, level = TowerDefense.UpgradeUnit(id)
 								if s then
-									unitLevel = level
+									poolData.unitLevel = level
 									updateUpgText()
 									addRecord("UpgradeUnit", { id = id, level = level, unit = unit })
 								end
@@ -390,7 +428,45 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				for _, child in ipairs(managerFrame:GetChildren()) do
 					if child:IsA("Frame") then child:Destroy() end
 				end
+				
+				autoUpgradePool = {}
+				autoUpgradeLoopRunning = true
+				task.spawn(function()
+					while autoUpgradeLoopRunning and isRecording do
+						local bestUnit = nil
+						local lowestCost = math.huge
+						
+						for _, u in ipairs(autoUpgradePool) do
+							if u.active then
+								local cfg = Config:FindFirstChild(u.unitName)
+								if cfg then
+									local s, c = pcall(require, cfg)
+									if s and c and c.UnitConfig and c.UnitConfig.Upgrades and c.UnitConfig.Upgrades[u.unitLevel] then
+										local cost = c.UnitConfig.Upgrades[u.unitLevel].Cost
+										if cost and cost < lowestCost then
+											lowestCost = cost
+											bestUnit = u
+										end
+									end
+								end
+							end
+						end
+						
+						if bestUnit and player:GetAttribute("Cash") >= lowestCost then
+							local s, level = TowerDefense.UpgradeUnit(bestUnit.id)
+							if s then
+								bestUnit.unitLevel = level
+								bestUnit.updateUpgText()
+								addRecord("UpgradeUnit", { id = bestUnit.id, level = level, unit = bestUnit.unitName })
+								task.wait(0.2)
+							end
+						end
+						
+						task.wait(0.5)
+					end
+				end)
 			else
+				autoUpgradeLoopRunning = false
 				statusLabel.Text = "Status: Idle (Copied)"
 				print("Recording stopped!")
 				managerFrame.Visible = false
