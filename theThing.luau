@@ -15,32 +15,32 @@ print("loading")
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
 local recordedPlacements = {
-	dif = "dif_easy",
-	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 2, position = Vector3.new(-331.864, 61.680, -133.884), rotation = -180},
-	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 4, position = Vector3.new(-331.283, 61.680, -131.468), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 2},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 4, level = 2},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 3},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 4, level = 3},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 4},
-	{type = "PlaceUnit", unit = "unit_tomato_plant", id = 20, position = Vector3.new(-331.364, 61.680, -128.752), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 20, level = 2},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 20, level = 3},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 4, level = 4},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 20, level = 4},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 2, level = 5},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 4, level = 5},
-	{type = "UpgradeUnit", unit = "unit_tomato_plant", id = 20, level = 5},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 45, position = Vector3.new(-326.327, 61.680, -128.643), rotation = -180},
+	dif = "dif_normal",
+	{type = "PlaceUnit", unit = "unit_cactus", id = 16, position = Vector3.new(-326.893, 61.680, -128.473), rotation = -180},
+	{type = "PlaceUnit", unit = "unit_cactus", id = 17, position = Vector3.new(-327.793, 61.680, -130.353), rotation = -180},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 30, position = Vector3.new(-325.536, 61.680, -126.300), rotation = -180},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 45, position = Vector3.new(-327.780, 61.680, -125.529), rotation = -180},
+	{type = "PlaceUnit", unit = "unit_cactus", id = 46, position = Vector3.new(-330.024, 61.680, -130.245), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 30, level = 2},
 	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 2},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 52, position = Vector3.new(-326.137, 61.680, -126.581), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 52, level = 2},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 57, position = Vector3.new(-328.657, 61.680, -124.570), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 57, level = 2},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 59, position = Vector3.new(-328.262, 61.680, -128.002), rotation = -180},
-	{type = "PlaceUnit", unit = "unit_palm_tree", id = 60, position = Vector3.new(-327.246, 61.680, -131.190), rotation = -180},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 59, level = 2},
-	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 60, level = 2},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 75, position = Vector3.new(-324.840, 61.680, -132.612), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 75, level = 2},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 30, level = 3},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 3},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 75, level = 3},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 30, level = 4},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 4},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 115, position = Vector3.new(-329.466, 61.680, -133.116), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 75, level = 4},
+	{type = "PlaceUnit", unit = "unit_palm_tree", id = 126, position = Vector3.new(-323.185, 61.680, -121.262), rotation = -180},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 115, level = 2},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 126, level = 2},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 115, level = 3},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 126, level = 3},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 115, level = 4},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 126, level = 4},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 30, level = 5},
+	{type = "UpgradeUnit", unit = "unit_palm_tree", id = 45, level = 5},
 }
 
 --Events
@@ -98,7 +98,7 @@ game.Workspace:GetAttribute("CanSkipWave")
 -- local changeSuccess = ChangeTickSpeedEvent:InvokeServer(2)
 
 -- vote difficulty
--- PlaceDifficultyVote:InvokeServer("dif_easy") -- or dif_med, etc.
+-- PlaceDifficultyVote:InvokeServer("dif_easy") -- or dif_normal or dif_hard
 
 -- UI Setup
 local CoreGui = game:GetService("CoreGui")
