@@ -207,19 +207,36 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 							task.wait(0.1)
 						end
 						
-						local placementTable = {
-							CF = CFrame.new(action.position) * CFrame.Angles(0, math.rad(action.rotation), 0),
-							Rotation = action.rotation,
-							Valid = true,
-							Position = action.position,
-						}
-						
-						local s, newId = TowerDefense.PlaceUnit(action.unit, placementTable)
-						if s and newId then
-							idMap[action.id] = newId
-							print("Playback: Placed " .. action.unit)
-						else
-							warn("Playback: Failed to place " .. action.unit)
+						local s, newId
+						local attempt = 0
+						while not s do
+							local offset = Vector3.new(
+								(math.random() * 2 - 1) * 1,
+								0,
+								(math.random() * 2 - 1) * 1
+							)
+							if attempt == 0 then offset = Vector3.new(0, 0, 0) end
+							
+							local testPos = action.position + offset
+							local placementTable = {
+								CF = CFrame.new(testPos) * CFrame.Angles(0, math.rad(action.rotation), 0),
+								Rotation = action.rotation,
+								Valid = true,
+								Position = testPos,
+							}
+							
+							s, newId = TowerDefense.PlaceUnit(action.unit, placementTable)
+							if s and newId then
+								idMap[action.id] = newId
+								if attempt == 0 then
+									print("Playback: Placed " .. action.unit)
+								else
+									print("Playback: Placed " .. action.unit .. " after " .. attempt .. " retries")
+								end
+							else
+								attempt = attempt + 1
+								task.wait(0.3)
+							end
 						end
 						
 					elseif action.type == "UpgradeUnit" then
@@ -242,11 +259,14 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						
 						local targetId = idMap[action.id]
 						if targetId then
-							local s = TowerDefense.UpgradeUnit(targetId)
-							if s then
-								print("Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level))
-							else
-								warn("Playback: Failed to upgrade " .. action.unit)
+							local s = false
+							while not s do
+								s = TowerDefense.UpgradeUnit(targetId)
+								if s then
+									print("Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level))
+								else
+									task.wait(0.3)
+								end
 							end
 						else
 							warn("Playback: Could not find mapped ID for upgrade " .. tostring(action.id))
