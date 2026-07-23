@@ -1,6 +1,12 @@
 local player = game:GetService("Players").LocalPlayer
 local Helper = require(player.PlayerGui.LogicHolder.ClientLoader.Modules.SharedHelper)
 local TowerDefense = require(player.PlayerGui.LogicHolder.ClientLoader.Modules.SharedTowerDefenseHandler)
+local Entities = workspace.Map.Entities -- .UnitId
+
+local SkipWave = player.PlayerGui.GameGuiNoInset.Screen.Top.SkipWave.Button -- image button
+local AutoSkipButton = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.AutoSkip -- image button
+local Speed1 = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.TickSpeed.Items["1"] -- image button
+local Speed2 = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.TickSpeed.Items["2"] -- image button
 
 local EffectHolder = workspace:WaitForChild("EffectHolder")
 print("loading")
@@ -41,7 +47,10 @@ local table = {
 	Position = CF.Position,
 }
 local success, id = TowerDefense.PlaceUnit(unit, table)
-]]
+
+-- upgrade unit
+local success, level = TowerDefense.UpgradeUnit(id)
+--]]
 
 -- cash
 player:GetAttribute("Cash")
@@ -81,6 +90,21 @@ statusLabel.Font = Enum.Font.GothamBold
 statusLabel.Text = "Status: Idle"
 statusLabel.Parent = macroGui
 
+local managerFrame = Instance.new("ScrollingFrame")
+managerFrame.Size = UDim2.new(0, 200, 0, 300)
+managerFrame.Position = UDim2.new(1, -220, 0.5, 60)
+managerFrame.AnchorPoint = Vector2.new(0, 0)
+managerFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+managerFrame.BackgroundTransparency = 0.3
+managerFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+managerFrame.Visible = false
+managerFrame.Parent = macroGui
+
+local managerList = Instance.new("UIListLayout")
+managerList.SortOrder = Enum.SortOrder.LayoutOrder
+managerList.Padding = UDim.new(0, 5)
+managerList.Parent = managerFrame
+
 -- Recording System Toggle
 local UserInputService = game:GetService("UserInputService")
 local isRecording = false
@@ -89,6 +113,37 @@ local gHeld = false
 
 local recordedQueries = {}
 local lastQueryTime = 0
+local autoSkipState = false
+local buttonConns = {}
+
+local function addRecord(actionType, data)
+	if not isRecording then return end
+	local currentTime = tick()
+	local delayTime = 0
+	if #recordedQueries > 0 then
+		delayTime = currentTime - lastQueryTime
+	end
+	lastQueryTime = currentTime
+	
+	local query = { type = actionType, delay = delayTime }
+	if data then
+		for k, v in pairs(data) do
+			query[k] = v
+		end
+	end
+	table.insert(recordedQueries, query)
+	
+	statusLabel.Text = "Recorded: " .. actionType
+	print(string.format("Recorded %s | Delay: %.2f", actionType, delayTime))
+end
+
+table.insert(buttonConns, SkipWave.Activated:Connect(function() addRecord("SkipWave") end))
+table.insert(buttonConns, AutoSkipButton.Activated:Connect(function()
+	autoSkipState = not autoSkipState
+	addRecord("AutoSkip", { state = autoSkipState })
+end))
+table.insert(buttonConns, Speed1.Activated:Connect(function() addRecord("TickSpeed", { speed = 1 }) end))
+table.insert(buttonConns, Speed2.Activated:Connect(function() addRecord("TickSpeed", { speed = 2 }) end))
 
 local inputBeganConn
 local inputEndedConn
@@ -105,6 +160,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					print("deleted")
 					if inputBeganConn then inputBeganConn:Disconnect() end
 					if inputEndedConn then inputEndedConn:Disconnect() end
+					for _, conn in ipairs(buttonConns) do conn:Disconnect() end
 					if macroGui then macroGui:Destroy() end
 					if script then
 						script:Destroy()
@@ -132,21 +188,60 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						}
 						local success, id = TowerDefense.PlaceUnit(unit, placementTable)
 						if success then
-							local currentTime = tick()
-							local delayTime = 0
-							if #recordedQueries > 0 then
-								delayTime = currentTime - lastQueryTime
-							end
-							lastQueryTime = currentTime
-							
-							table.insert(recordedQueries, {
+							addRecord("PlaceUnit", {
 								unit = unit,
-								delay = delayTime,
 								position = CF.Position,
 								rotation = rot
 							})
-							statusLabel.Text = "Recorded: " .. tostring(unit)
-							print(string.format("Recorded %s | Delay: %.2f", unit, delayTime))
+							
+							local card = Instance.new("Frame")
+							card.Size = UDim2.new(1, 0, 0, 40)
+							card.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+							card.Parent = managerFrame
+							
+							local nameLbl = Instance.new("TextLabel")
+							nameLbl.Size = UDim2.new(0.6, 0, 1, 0)
+							nameLbl.BackgroundTransparency = 1
+							nameLbl.Text = tostring(unit)
+							nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+							nameLbl.TextScaled = true
+							nameLbl.Parent = card
+							
+							local upgBtn = Instance.new("TextButton")
+							upgBtn.Size = UDim2.new(0.4, -5, 1, -10)
+							upgBtn.Position = UDim2.new(0.6, 0, 0, 5)
+							upgBtn.Text = "Upg"
+							upgBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 100)
+							upgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+							upgBtn.TextScaled = true
+							upgBtn.Parent = card
+							
+							local highlight
+							card.MouseEnter:Connect(function()
+								for _, model in ipairs(Entities:GetChildren()) do
+									if model:GetAttribute("ID") == id then
+										highlight = Instance.new("Highlight")
+										highlight.FillColor = Color3.new(1, 1, 0)
+										highlight.Parent = model
+										break
+									end
+								end
+							end)
+							card.MouseLeave:Connect(function()
+								if highlight then
+									highlight:Destroy()
+									highlight = nil
+								end
+							end)
+							
+							upgBtn.Activated:Connect(function()
+								local s, level = TowerDefense.UpgradeUnit(id)
+								if s then
+									addRecord("UpgradeUnit", { id = id, level = level, unit = unit })
+								end
+							end)
+							
+							managerFrame.CanvasSize = UDim2.new(0, 0, 0, managerList.AbsoluteContentSize.Y)
 						end
 					end
 				end
@@ -164,12 +259,27 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				statusLabel.Text = "Status: Recording"
 				print("Recording started!")
 				recordedQueries = {}
+				managerFrame.Visible = true
+				for _, child in ipairs(managerFrame:GetChildren()) do
+					if child:IsA("Frame") then child:Destroy() end
+				end
 			else
 				statusLabel.Text = "Status: Idle (Copied)"
 				print("Recording stopped!")
+				managerFrame.Visible = false
 				local output = "local recordedPlacements = {\n"
 				for _, query in ipairs(recordedQueries) do
-					output = output .. string.format('\t{unit = "%s", delay = %.3f, position = Vector3.new(%.3f, %.3f, %.3f), rotation = %d},\n', query.unit, query.delay, query.position.X, query.position.Y, query.position.Z, query.rotation)
+					if query.type == "PlaceUnit" then
+						output = output .. string.format('\t{type = "PlaceUnit", unit = "%s", delay = %.3f, position = Vector3.new(%.3f, %.3f, %.3f), rotation = %d},\n', query.unit, query.delay, query.position.X, query.position.Y, query.position.Z, query.rotation)
+					elseif query.type == "UpgradeUnit" then
+						output = output .. string.format('\t{type = "UpgradeUnit", unit = "%s", id = %d, level = %d, delay = %.3f},\n', query.unit, query.id, query.level, query.delay)
+					elseif query.type == "SkipWave" then
+						output = output .. string.format('\t{type = "SkipWave", delay = %.3f},\n', query.delay)
+					elseif query.type == "AutoSkip" then
+						output = output .. string.format('\t{type = "AutoSkip", state = %s, delay = %.3f},\n', tostring(query.state), query.delay)
+					elseif query.type == "TickSpeed" then
+						output = output .. string.format('\t{type = "TickSpeed", speed = %d, delay = %.3f},\n', query.speed, query.delay)
+					end
 				end
 				output = output .. "}"
 				
