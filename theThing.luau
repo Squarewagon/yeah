@@ -14,6 +14,8 @@ print("loading")
 
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
+local recordedPlacements = {} -- Paste your recording here!
+
 --Events
 local Events = game:GetService("ReplicatedStorage").RemoteFunctions
 local SkipWaveEvent = Events.SkipWave
@@ -114,9 +116,6 @@ local gHeld = false
 
 local recordedQueries = {}
 local lastQueryTime = 0
-local autoSkipState = false
-local buttonConns = {}
-
 local function addRecord(actionType, data)
 	if not isRecording then return end
 	local currentTime = tick()
@@ -138,14 +137,6 @@ local function addRecord(actionType, data)
 	print(string.format("Recorded %s | Delay: %.2f", actionType, delayTime))
 end
 
-table.insert(buttonConns, SkipWaveButton.Activated:Connect(function() addRecord("SkipWave") end))
-table.insert(buttonConns, AutoSkipButton.Activated:Connect(function()
-	autoSkipState = not autoSkipState
-	addRecord("AutoSkip", { state = autoSkipState })
-end))
-table.insert(buttonConns, Speed1.Activated:Connect(function() addRecord("TickSpeed", { speed = 1 }) end))
-table.insert(buttonConns, Speed2.Activated:Connect(function() addRecord("TickSpeed", { speed = 2 }) end))
-
 local inputBeganConn
 local inputEndedConn
 
@@ -161,7 +152,6 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					print("deleted")
 					if inputBeganConn then inputBeganConn:Disconnect() end
 					if inputEndedConn then inputEndedConn:Disconnect() end
-					for _, conn in ipairs(buttonConns) do conn:Disconnect() end
 					if macroGui then macroGui:Destroy() end
 					if script then
 						script:Destroy()
@@ -171,6 +161,97 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 				task.wait(0.1)
 			end
 		end)
+	elseif input.KeyCode == Enum.KeyCode.V then
+		if not isRecording and #recordedPlacements > 0 then
+			statusLabel.Text = "Status: Playing Macro"
+			print("Starting macro playback...")
+			task.spawn(function()
+				-- Force fast forward
+				pcall(function() ChangeTickSpeed:InvokeServer(2) end)
+				
+				local isPlaying = true
+				-- Thread to constantly AutoSkip
+				task.spawn(function()
+					while isPlaying do
+						if game.Workspace:GetAttribute("CanSkipWave") then
+							pcall(function() SkipWave:InvokeServer("y") end)
+						end
+						task.wait(0.5)
+					end
+				end)
+				
+				local idMap = {}
+				for _, action in ipairs(recordedPlacements) do
+					if action.type == "PlaceUnit" then
+						local cfg = Config:FindFirstChild(action.unit)
+						local baseCost = 0
+						if cfg then
+							local s, c = pcall(require, cfg)
+							if s and c and c.UnitConfig then
+								baseCost = c.UnitConfig.Cost or 0
+							end
+						end
+						
+						-- Wait for conditions
+						while true do
+							if game.Workspace:GetAttribute("CanPlaceUnits") and player:GetAttribute("Cash") >= baseCost then
+								break
+							end
+							task.wait(0.1)
+						end
+						
+						local placementTable = {
+							CF = CFrame.new(action.position) * CFrame.Angles(0, math.rad(action.rotation), 0),
+							Rotation = action.rotation,
+							Valid = true,
+							Position = action.position,
+						}
+						
+						local s, newId = TowerDefense.PlaceUnit(action.unit, placementTable)
+						if s and newId then
+							idMap[action.id] = newId
+							print("Playback: Placed " .. action.unit)
+						else
+							warn("Playback: Failed to place " .. action.unit)
+						end
+						
+					elseif action.type == "UpgradeUnit" then
+						local cfg = Config:FindFirstChild(action.unit)
+						local upgCost = 0
+						if cfg then
+							local s, c = pcall(require, cfg)
+							if s and c and c.UnitConfig and c.UnitConfig.Upgrades and c.UnitConfig.Upgrades[action.level] then
+								upgCost = c.UnitConfig.Upgrades[action.level].Cost or 0
+							end
+						end
+						
+						-- Wait for cash
+						while true do
+							if player:GetAttribute("Cash") >= upgCost then
+								break
+							end
+							task.wait(0.1)
+						end
+						
+						local targetId = idMap[action.id]
+						if targetId then
+							local s = TowerDefense.UpgradeUnit(targetId)
+							if s then
+								print("Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level))
+							else
+								warn("Playback: Failed to upgrade " .. action.unit)
+							end
+						else
+							warn("Playback: Could not find mapped ID for upgrade " .. tostring(action.id))
+						end
+					end
+				end
+				
+				isPlaying = false
+				statusLabel.Text = "Status: Playback Finished"
+				print("Macro playback finished!")
+			end)
+		end
 	elseif input.KeyCode == Enum.KeyCode.F then
 		if isRecording then
 			local unit = selectedUnit()
@@ -191,6 +272,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						if success then
 							addRecord("PlaceUnit", {
 								unit = unit,
+								id = id,
 								position = CF.Position,
 								rotation = rot
 							})
@@ -221,8 +303,8 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								local uConfig = Config:FindFirstChild(unit)
 								if uConfig then
 									local sCfg, cfgData = pcall(require, uConfig)
-									if sCfg and cfgData and cfgData.UnitConfig and cfgData.UnitConfig.Upgrades and cfgData.UnitConfig.Upgrades[unitLevel-1] then
-										upgBtn.Text = tostring(cfgData.UnitConfig.Upgrades[unitLevel-1].Cost)
+									if sCfg and cfgData and cfgData.UnitConfig and cfgData.UnitConfig.Upgrades and cfgData.UnitConfig.Upgrades[unitLevel] then
+										upgBtn.Text = tostring(cfgData.UnitConfig.Upgrades[unitLevel].Cost)
 									else
 										upgBtn.Text = "Max"
 									end
@@ -288,15 +370,9 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				local output = "local recordedPlacements = {\n"
 				for _, query in ipairs(recordedQueries) do
 					if query.type == "PlaceUnit" then
-						output = output .. string.format('\t{type = "PlaceUnit", unit = "%s", delay = %.3f, position = Vector3.new(%.3f, %.3f, %.3f), rotation = %d},\n', query.unit, query.delay, query.position.X, query.position.Y, query.position.Z, query.rotation)
+						output = output .. string.format('\t{type = "PlaceUnit", unit = "%s", id = %d, delay = %.3f, position = Vector3.new(%.3f, %.3f, %.3f), rotation = %d},\n', query.unit, query.id, query.delay, query.position.X, query.position.Y, query.position.Z, query.rotation)
 					elseif query.type == "UpgradeUnit" then
 						output = output .. string.format('\t{type = "UpgradeUnit", unit = "%s", id = %d, level = %d, delay = %.3f},\n', query.unit, query.id, query.level, query.delay)
-					elseif query.type == "SkipWave" then
-						output = output .. string.format('\t{type = "SkipWave", delay = %.3f},\n', query.delay)
-					elseif query.type == "AutoSkip" then
-						output = output .. string.format('\t{type = "AutoSkip", state = %s, delay = %.3f},\n', tostring(query.state), query.delay)
-					elseif query.type == "TickSpeed" then
-						output = output .. string.format('\t{type = "TickSpeed", speed = %d, delay = %.3f},\n', query.speed, query.delay)
 					end
 				end
 				output = output .. "}"
