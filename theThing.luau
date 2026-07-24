@@ -4,11 +4,6 @@ local TowerDefense = require(player.PlayerGui.LogicHolder.ClientLoader.Modules.S
 local Entities = workspace.Map.Entities -- .UnitId
 local Config = player.PlayerGui.LogicHolder.ClientLoader.SharedConfig.ItemData.Units.Configs -- .UnitId | require this with .UnitId, they're ModuleScript
 
-local SkipWaveButton = player.PlayerGui.GameGuiNoInset.Screen.Top.SkipWave.Button -- image button
-local AutoSkipButton = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.AutoSkip -- image button
-local Speed1 = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.TickSpeed.Items["1"] -- image button
-local Speed2 = player.PlayerGui.GameGuiNoInset.Screen.Top.WaveControls.TickSpeed.Items["2"] -- image button
-
 local EffectHolder = workspace:WaitForChild("EffectHolder")
 print("loading")
 
@@ -16,15 +11,19 @@ print("loading")
 
 local configsUrl = "https://raw.githubusercontent.com/Squarewagon/yeah/refs/heads/main/placements.luau"
 local macroConfigs = {}
-pcall(function()
-	local raw = game:HttpGet(configsUrl)
-	if raw then
-		local func = loadstring(raw)
-		if func then
-			macroConfigs = func()
+local function fetchConfigs()
+	pcall(function()
+		local cacheBustUrl = configsUrl .. "?t=" .. tostring(tick())
+		local raw = game:HttpGet(cacheBustUrl)
+		if raw then
+			local func = loadstring(raw)
+			if func then
+				macroConfigs = func()
+			end
 		end
-	end
-end)
+	end)
+end
+fetchConfigs()
 
 local recordedPlacements = {}
 
@@ -103,7 +102,7 @@ managerList.Padding = UDim.new(0, 5)
 managerList.Parent = managerFrame
 
 local dropdownBtn = Instance.new("TextButton")
-dropdownBtn.Size = UDim2.new(0, 200, 0, 40)
+dropdownBtn.Size = UDim2.new(0, 160, 0, 40)
 dropdownBtn.Position = UDim2.new(1, -220, 0.5, -160)
 dropdownBtn.AnchorPoint = Vector2.new(0, 0)
 dropdownBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -113,6 +112,18 @@ dropdownBtn.TextScaled = true
 dropdownBtn.Font = Enum.Font.GothamBold
 dropdownBtn.Text = "Select Macro..."
 dropdownBtn.Parent = macroGui
+
+local refreshBtn = Instance.new("TextButton")
+refreshBtn.Size = UDim2.new(0, 40, 0, 40)
+refreshBtn.Position = UDim2.new(1, -60, 0.5, -160)
+refreshBtn.AnchorPoint = Vector2.new(0, 0)
+refreshBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+refreshBtn.BackgroundTransparency = 0.3
+refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+refreshBtn.TextScaled = true
+refreshBtn.Font = Enum.Font.GothamBold
+refreshBtn.Text = "↻"
+refreshBtn.Parent = macroGui
 
 local dropdownList = Instance.new("ScrollingFrame")
 dropdownList.Size = UDim2.new(0, 200, 0, 160)
@@ -131,23 +142,38 @@ dropdownLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function(
 	dropdownList.CanvasSize = UDim2.new(0, 0, 0, dropdownLayout.AbsoluteContentSize.Y)
 end)
 
-for name, data in pairs(macroConfigs) do
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1, 0, 0, 40)
-	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.TextScaled = true
-	btn.Font = Enum.Font.Gotham
-	btn.Text = tostring(name)
-	btn.ZIndex = 6
-	btn.Parent = dropdownList
+local function populateDropdown()
+	for _, child in ipairs(dropdownList:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
+	end
 	
-	btn.Activated:Connect(function()
-		recordedPlacements = data
-		dropdownBtn.Text = tostring(name)
-		dropdownList.Visible = false
-	end)
+	for name, data in pairs(macroConfigs) do
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 0, 40)
+		btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		btn.TextScaled = true
+		btn.Font = Enum.Font.Gotham
+		btn.Text = tostring(name)
+		btn.ZIndex = 6
+		btn.Parent = dropdownList
+		
+		btn.Activated:Connect(function()
+			recordedPlacements = data
+			dropdownBtn.Text = tostring(name)
+			dropdownList.Visible = false
+		end)
+	end
 end
+populateDropdown()
+
+refreshBtn.Activated:Connect(function()
+	dropdownBtn.Text = "Fetching..."
+	fetchConfigs()
+	populateDropdown()
+	dropdownBtn.Text = "Select Macro..."
+	recordedPlacements = {}
+end)
 
 dropdownBtn.Activated:Connect(function()
 	dropdownList.Visible = not dropdownList.Visible
