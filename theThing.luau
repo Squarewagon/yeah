@@ -150,6 +150,25 @@ local function addRecord(actionType, data)
 	print(string.format("Recorded %s", actionType))
 end
 
+local function getTrueUnitConfig(unitName)
+	local cfg = Config:FindFirstChild(unitName)
+	if not cfg then return nil end
+	local s, c = pcall(require, cfg)
+	if s and c then
+		if c.BaseUnit then
+			local baseCfg = Config:FindFirstChild(c.BaseUnit)
+			if baseCfg then
+				local s2, c2 = pcall(require, baseCfg)
+				if s2 and c2 then
+					return c2.UnitConfig
+				end
+			end
+		end
+		return c.UnitConfig
+	end
+	return nil
+end
+
 local inputBeganConn
 local inputEndedConn
 
@@ -251,13 +270,10 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						end
 
 						if action.type == "PlaceUnit" then
-							local cfg = Config:FindFirstChild(action.unit)
+							local trueConfig = getTrueUnitConfig(action.unit)
 							local baseCost = 0
-							if cfg then
-								local s, c = pcall(require, cfg)
-								if s and c and c.UnitConfig then
-									baseCost = c.UnitConfig.Cost or 0
-								end
+							if trueConfig then
+								baseCost = trueConfig.Cost or 0
 							end
 
 							-- Wait for conditions
@@ -300,19 +316,10 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								end
 							end
 						elseif action.type == "UpgradeUnit" then
-							local cfg = Config:FindFirstChild(action.unit)
+							local trueConfig = getTrueUnitConfig(action.unit)
 							local upgCost = 0
-							if cfg then
-								local s, c = pcall(require, cfg)
-								if
-									s
-									and c
-									and c.UnitConfig
-									and c.UnitConfig.Upgrades
-									and c.UnitConfig.Upgrades[action.level - 1]
-								then
-									upgCost = c.UnitConfig.Upgrades[action.level - 1].Cost or 0
-								end
+							if trueConfig and trueConfig.Upgrades and trueConfig.Upgrades[action.level - 1] then
+								upgCost = trueConfig.Upgrades[action.level - 1].Cost or 0
 							end
 
 							-- Wait for cash
@@ -451,19 +458,9 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						end)
 
 						local function updateUpgText()
-							if uConfig then
-								local sCfg, cfgData = pcall(require, uConfig)
-								if
-									sCfg
-									and cfgData
-									and cfgData.UnitConfig
-									and cfgData.UnitConfig.Upgrades
-									and cfgData.UnitConfig.Upgrades[poolData.unitLevel]
-								then
-									upgBtn.Text = tostring(cfgData.UnitConfig.Upgrades[poolData.unitLevel].Cost)
-								else
-									upgBtn.Text = "Max"
-								end
+							local trueConfig = getTrueUnitConfig(poolData.unitName)
+							if trueConfig and trueConfig.Upgrades and trueConfig.Upgrades[poolData.unitLevel] then
+								upgBtn.Text = tostring(trueConfig.Upgrades[poolData.unitLevel].Cost)
 							else
 								upgBtn.Text = "Max"
 							end
@@ -531,21 +528,12 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 
 						for _, u in ipairs(autoUpgradePool) do
 							if u.active then
-								local cfg = Config:FindFirstChild(u.unitName)
-								if cfg then
-									local s, c = pcall(require, cfg)
-									if
-										s
-										and c
-										and c.UnitConfig
-										and c.UnitConfig.Upgrades
-										and c.UnitConfig.Upgrades[u.unitLevel]
-									then
-										local cost = c.UnitConfig.Upgrades[u.unitLevel].Cost
-										if cost and cost < lowestCost then
-											lowestCost = cost
-											bestUnit = u
-										end
+								local trueConfig = getTrueUnitConfig(u.unitName)
+								if trueConfig and trueConfig.Upgrades and trueConfig.Upgrades[u.unitLevel] then
+									local cost = trueConfig.Upgrades[u.unitLevel].Cost
+									if cost and cost < lowestCost then
+										lowestCost = cost
+										bestUnit = u
 									end
 								end
 							end
