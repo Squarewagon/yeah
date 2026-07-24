@@ -4,26 +4,37 @@ local TowerDefense = require(player.PlayerGui.LogicHolder.ClientLoader.Modules.S
 local Entities = workspace.Map.Entities -- .UnitId
 local Config = player.PlayerGui.LogicHolder.ClientLoader.SharedConfig.ItemData.Units.Configs -- .UnitId | require this with .UnitId, they're ModuleScript
 
+workspace:GetAttribute("Difficulty")
+workspace:GetAttribute("MapId")
+
 local EffectHolder = workspace:WaitForChild("EffectHolder")
 print("loading")
 
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
-local configsUrl = "https://raw.githubusercontent.com/Squarewagon/yeah/refs/heads/main/placements.luau"
+local HttpService = game:GetService("HttpService")
+local SAVE_FILE = "TomatoMacros.json"
 local macroConfigs = {}
-local function fetchConfigs()
-	pcall(function()
-		local cacheBustUrl = configsUrl .. "?t=" .. tostring(tick())
-		local raw = game:HttpGet(cacheBustUrl)
-		if raw then
-			local func = loadstring(raw)
-			if func then
-				macroConfigs = func()
-			end
+
+local function loadMacros()
+	if isfile and isfile(SAVE_FILE) then
+		local s, data = pcall(function()
+			return HttpService:JSONDecode(readfile(SAVE_FILE))
+		end)
+		if s and type(data) == "table" then
+			macroConfigs = data
 		end
-	end)
+	end
 end
-fetchConfigs()
+loadMacros()
+
+local function saveMacros()
+	if writefile then
+		pcall(function()
+			writefile(SAVE_FILE, HttpService:JSONEncode(macroConfigs))
+		end)
+	end
+end
 
 local recordedPlacements = {}
 
@@ -101,83 +112,7 @@ managerList.SortOrder = Enum.SortOrder.LayoutOrder
 managerList.Padding = UDim.new(0, 5)
 managerList.Parent = managerFrame
 
-local dropdownBtn = Instance.new("TextButton")
-dropdownBtn.Size = UDim2.new(0, 160, 0, 40)
-dropdownBtn.Position = UDim2.new(1, -220, 0.5, -160)
-dropdownBtn.AnchorPoint = Vector2.new(0, 0)
-dropdownBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-dropdownBtn.BackgroundTransparency = 0.3
-dropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-dropdownBtn.TextScaled = true
-dropdownBtn.Font = Enum.Font.GothamBold
-dropdownBtn.Text = "Select Macro..."
-dropdownBtn.Parent = macroGui
 
-local refreshBtn = Instance.new("TextButton")
-refreshBtn.Size = UDim2.new(0, 40, 0, 40)
-refreshBtn.Position = UDim2.new(1, -60, 0.5, -160)
-refreshBtn.AnchorPoint = Vector2.new(0, 0)
-refreshBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-refreshBtn.BackgroundTransparency = 0.3
-refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-refreshBtn.TextScaled = true
-refreshBtn.Font = Enum.Font.GothamBold
-refreshBtn.Text = "↻"
-refreshBtn.Parent = macroGui
-
-local dropdownList = Instance.new("ScrollingFrame")
-dropdownList.Size = UDim2.new(0, 200, 0, 160)
-dropdownList.Position = UDim2.new(1, -430, 0.5, -160)
-dropdownList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-dropdownList.BackgroundTransparency = 0.1
-dropdownList.Visible = false
-dropdownList.ZIndex = 5
-dropdownList.Parent = macroGui
-
-local dropdownLayout = Instance.new("UIListLayout")
-dropdownLayout.SortOrder = Enum.SortOrder.LayoutOrder
-dropdownLayout.Parent = dropdownList
-
-dropdownLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	dropdownList.CanvasSize = UDim2.new(0, 0, 0, dropdownLayout.AbsoluteContentSize.Y)
-end)
-
-local function populateDropdown()
-	for _, child in ipairs(dropdownList:GetChildren()) do
-		if child:IsA("TextButton") then child:Destroy() end
-	end
-	
-	for name, data in pairs(macroConfigs) do
-		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(1, 0, 0, 40)
-		btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		btn.TextScaled = true
-		btn.Font = Enum.Font.Gotham
-		btn.Text = tostring(name)
-		btn.ZIndex = 6
-		btn.Parent = dropdownList
-		
-		btn.Activated:Connect(function()
-			recordedPlacements = data
-			dropdownBtn.Text = tostring(name)
-			dropdownList.Visible = false
-		end)
-	end
-end
-populateDropdown()
-
-refreshBtn.Activated:Connect(function()
-	dropdownBtn.Text = "Fetching..."
-	fetchConfigs()
-	populateDropdown()
-	dropdownBtn.Text = "Select Macro..."
-	recordedPlacements = {}
-end)
-
-dropdownBtn.Activated:Connect(function()
-	dropdownList.Visible = not dropdownList.Visible
-end)
 
 -- Recording System Toggle
 local UserInputService = game:GetService("UserInputService")
@@ -240,10 +175,15 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			return
 		end
 		
-		if #recordedPlacements > 0 then
+		local mapId = workspace:GetAttribute("MapId") or "unknown_map"
+		local dif = workspace:GetAttribute("Difficulty") or "dif_normal"
+		local key = mapId .. "_" .. dif
+		
+		local activeMacro = macroConfigs[key]
+		if activeMacro and activeMacro.actions and #activeMacro.actions > 0 then
 			isPlayingMacro = true
-			statusLabel.Text = "Status: Playing Macro"
-			print("Starting macro playback...")
+			statusLabel.Text = "Status: Playing " .. key
+			print("Starting macro playback for " .. key .. "...")
 			
 			local sessionStartTime = tick()
 			task.spawn(function()
@@ -282,7 +222,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					end)
 					
 					local idMap = {}
-					for _, action in ipairs(recordedPlacements) do
+					for _, action in ipairs(activeMacro.actions) do
 						if not isPlayingMacro or gameEnded then break end
 						
 						if action.type == "PlaceUnit" then
@@ -313,7 +253,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 									(math.random() * 2 - 1) * 1
 								)
 								
-								local testPos = action.position + offset
+								local testPos = Vector3.new(action.position.X, action.position.Y, action.position.Z) + offset
 								local placementTable = {
 									CF = CFrame.new(testPos) * CFrame.Angles(0, math.rad(action.rotation), 0),
 									Rotation = action.rotation,
@@ -383,10 +323,10 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					
 					if isPlayingMacro then
 						print("Game Ended! Voting difficulty to restart...")
-						local dif = recordedPlacements.dif or "dif_easy"
+						local difRestart = activeMacro.dif or "dif_easy"
 						pcall(function() RestartGame:InvokeServer() end)
 						task.wait(1)
-						pcall(function() PlaceDifficultyVote:InvokeServer(dif) end)
+						pcall(function() PlaceDifficultyVote:InvokeServer(difRestart) end)
 						task.wait(15) -- Give the server time to process restart before hitting the loop again
 					end
 				end
@@ -573,22 +513,39 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				end)
 			else
 				autoUpgradeLoopRunning = false
-				statusLabel.Text = "Status: Idle (Copied)"
-				print("Recording stopped!")
 				managerFrame.Visible = false
-				local output = "{\n"
-				output = output .. '\tdif = "FILL",\n'
+				
+				local mapId = workspace:GetAttribute("MapId") or "unknown_map"
+				local dif = workspace:GetAttribute("Difficulty") or "dif_normal"
+				local key = mapId .. "_" .. dif
+				
+				local saveActions = {}
 				for _, query in ipairs(recordedQueries) do
 					if query.type == "PlaceUnit" then
-						output = output .. string.format('\t{type = "PlaceUnit", unit = "%s", id = %d, position = Vector3.new(%.3f, %.3f, %.3f), rotation = %d},\n', query.unit, query.id, query.position.X, query.position.Y, query.position.Z, query.rotation)
+						table.insert(saveActions, {
+							type = "PlaceUnit",
+							unit = query.unit,
+							id = query.id,
+							position = {X = query.position.X, Y = query.position.Y, Z = query.position.Z},
+							rotation = query.rotation
+						})
 					elseif query.type == "UpgradeUnit" then
-						output = output .. string.format('\t{type = "UpgradeUnit", unit = "%s", id = %d, level = %d},\n', query.unit, query.id, query.level)
+						table.insert(saveActions, {
+							type = "UpgradeUnit",
+							unit = query.unit,
+							id = query.id,
+							level = query.level
+						})
 					end
 				end
-				output = output .. "}"
 				
-				setclipboard(output)
-				print("Copied recording to clipboard!")
+				macroConfigs[key] = {
+					dif = dif,
+					actions = saveActions
+				}
+				saveMacros()
+				statusLabel.Text = "Status: Saved!"
+				print("Saved macro to " .. key .. " in " .. SAVE_FILE)
 			end
 		end
 		gHeld = false
