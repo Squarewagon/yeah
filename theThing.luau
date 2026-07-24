@@ -67,7 +67,9 @@ end
 
 -- UI Setup
 local CoreGui = game:GetService("CoreGui")
-local guiParent = pcall(function() return CoreGui.Name end) and CoreGui or player:WaitForChild("PlayerGui")
+local guiParent = pcall(function()
+	return CoreGui.Name
+end) and CoreGui or player:WaitForChild("PlayerGui")
 local macroGui = Instance.new("ScreenGui")
 macroGui.Name = "MacroStatusUI"
 macroGui.ResetOnSpawn = false
@@ -112,8 +114,6 @@ managerList.SortOrder = Enum.SortOrder.LayoutOrder
 managerList.Padding = UDim.new(0, 5)
 managerList.Parent = managerFrame
 
-
-
 -- Recording System Toggle
 local UserInputService = game:GetService("UserInputService")
 local isRecording = false
@@ -126,9 +126,18 @@ local autoUpgradeLoopRunning = false
 
 local isPlayingMacro = false
 
+local has3xSpeed = false
+task.spawn(function()
+	pcall(function()
+		has3xSpeed = game:GetService("MarketplaceService"):UserOwnsGamePassAsync(player.UserId, 1252939423)
+	end)
+end)
+
 local function addRecord(actionType, data)
-	if not isRecording then return end
-	
+	if not isRecording then
+		return
+	end
+
 	local query = { type = actionType }
 	if data then
 		for k, v in pairs(data) do
@@ -136,7 +145,7 @@ local function addRecord(actionType, data)
 		end
 	end
 	table.insert(recordedQueries, query)
-	
+
 	statusLabel.Text = "Recorded: " .. actionType
 	print(string.format("Recorded %s", actionType))
 end
@@ -145,18 +154,26 @@ local inputBeganConn
 local inputEndedConn
 
 inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-	if gameProcessedEvent then return end
+	if gameProcessedEvent then
+		return
+	end
 	if input.KeyCode == Enum.KeyCode.G then
 		gHeld = true
 		gPressTime = tick()
-		
+
 		task.spawn(function()
 			while gHeld do
 				if tick() - gPressTime >= 2 then
 					print("deleted")
-					if inputBeganConn then inputBeganConn:Disconnect() end
-					if inputEndedConn then inputEndedConn:Disconnect() end
-					if macroGui then macroGui:Destroy() end
+					if inputBeganConn then
+						inputBeganConn:Disconnect()
+					end
+					if inputEndedConn then
+						inputEndedConn:Disconnect()
+					end
+					if macroGui then
+						macroGui:Destroy()
+					end
 					if script then
 						script:Destroy()
 					end
@@ -166,25 +183,27 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			end
 		end)
 	elseif input.KeyCode == Enum.KeyCode.V then
-		if isRecording then return end
-		
+		if isRecording then
+			return
+		end
+
 		if isPlayingMacro then
 			isPlayingMacro = false
 			statusLabel.Text = "Status: Playback Stopped"
 			print("Macro playback stopped!")
 			return
 		end
-		
+
 		local mapId = workspace:GetAttribute("MapId") or "unknown_map"
 		local dif = workspace:GetAttribute("Difficulty") or "dif_normal"
 		local key = mapId .. "_" .. dif
-		
+
 		local activeMacro = macroConfigs[key]
 		if activeMacro and activeMacro.actions and #activeMacro.actions > 0 then
 			isPlayingMacro = true
 			statusLabel.Text = "Status: Playing " .. key
 			print("Starting macro playback for " .. key .. "...")
-			
+
 			local sessionStartTime = tick()
 			task.spawn(function()
 				while isPlayingMacro do
@@ -197,34 +216,40 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 				end
 				timerLabel.Text = "Time: 00:00:00"
 			end)
-			
+
 			task.spawn(function()
 				while isPlayingMacro do
 					print("Starting new macro run...")
 					-- Force fast forward
-					pcall(function() ChangeTickSpeed:InvokeServer(2) end)
-					
+					pcall(function()
+						ChangeTickSpeed:InvokeServer(has3xSpeed and 3 or 2)
+					end)
+
 					local runActive = true
 					local gameEnded = false
-					
+
 					local endConn = ShowGameEnd.OnClientEvent:Connect(function()
 						gameEnded = true
 					end)
-					
+
 					-- Thread to constantly AutoSkip
 					task.spawn(function()
 						while runActive and isPlayingMacro and not gameEnded do
 							if game.Workspace:GetAttribute("CanSkipWave") then
-								pcall(function() SkipWave:InvokeServer("y") end)
+								pcall(function()
+									SkipWave:InvokeServer("y")
+								end)
 							end
 							task.wait(0.5)
 						end
 					end)
-					
+
 					local idMap = {}
 					for _, action in ipairs(activeMacro.actions) do
-						if not isPlayingMacro or gameEnded then break end
-						
+						if not isPlayingMacro or gameEnded then
+							break
+						end
+
 						if action.type == "PlaceUnit" then
 							local cfg = Config:FindFirstChild(action.unit)
 							local baseCost = 0
@@ -234,7 +259,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 									baseCost = c.UnitConfig.Cost or 0
 								end
 							end
-							
+
 							-- Wait for conditions
 							while isPlayingMacro and not gameEnded do
 								if player:GetAttribute("Cash") >= baseCost then
@@ -242,25 +267,24 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								end
 								task.wait(0.1)
 							end
-							if not isPlayingMacro or gameEnded then break end
-							
+							if not isPlayingMacro or gameEnded then
+								break
+							end
+
 							local s, newId
 							local attempt = 0
 							while not s and isPlayingMacro and not gameEnded do
-								local offset = Vector3.new(
-									(math.random() * 2 - 1) * 1,
-									0,
-									(math.random() * 2 - 1) * 1
-								)
-								
-								local testPos = Vector3.new(action.position.X, action.position.Y, action.position.Z) + offset
+								local offset = Vector3.new((math.random() * 2 - 1) * 1, 0, (math.random() * 2 - 1) * 1)
+
+								local testPos = Vector3.new(action.position.X, action.position.Y, action.position.Z)
+									+ offset
 								local placementTable = {
 									CF = CFrame.new(testPos) * CFrame.Angles(0, math.rad(action.rotation), 0),
 									Rotation = action.rotation,
 									Valid = true,
 									Position = testPos,
 								}
-								
+
 								s, newId = TowerDefense.PlaceUnit(action.unit, placementTable)
 								if s and newId then
 									idMap[action.id] = newId
@@ -275,17 +299,22 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 									task.wait(0.3)
 								end
 							end
-							
 						elseif action.type == "UpgradeUnit" then
 							local cfg = Config:FindFirstChild(action.unit)
 							local upgCost = 0
 							if cfg then
 								local s, c = pcall(require, cfg)
-								if s and c and c.UnitConfig and c.UnitConfig.Upgrades and c.UnitConfig.Upgrades[action.level - 1] then
+								if
+									s
+									and c
+									and c.UnitConfig
+									and c.UnitConfig.Upgrades
+									and c.UnitConfig.Upgrades[action.level - 1]
+								then
 									upgCost = c.UnitConfig.Upgrades[action.level - 1].Cost or 0
 								end
 							end
-							
+
 							-- Wait for cash
 							while isPlayingMacro and not gameEnded do
 								if player:GetAttribute("Cash") >= upgCost then
@@ -293,15 +322,19 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								end
 								task.wait(0.1)
 							end
-							if not isPlayingMacro or gameEnded then break end
-							
+							if not isPlayingMacro or gameEnded then
+								break
+							end
+
 							local targetId = idMap[action.id]
 							if targetId then
 								local s = false
 								while not s and isPlayingMacro and not gameEnded do
 									s = TowerDefense.UpgradeUnit(targetId)
 									if s then
-										print("Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level))
+										print(
+											"Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level)
+										)
 										task.wait(0.2) -- Allow server cash replication to catch up
 									else
 										task.wait(0.3)
@@ -312,22 +345,28 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 							end
 						end
 					end
-					
+
 					-- Wait for the game to actually end
 					while isPlayingMacro and not gameEnded do
 						task.wait(0.5)
 					end
-					
+
 					runActive = false
-					if endConn then endConn:Disconnect() end
-					
+					if endConn then
+						endConn:Disconnect()
+					end
+
 					if isPlayingMacro then
 						print("Game Ended! Voting difficulty to restart...")
 						local difRestart = activeMacro.dif or "dif_easy"
-						pcall(function() RestartGame:InvokeServer() end)
+						pcall(function()
+							RestartGame:InvokeServer()
+						end)
 						task.wait(1)
-						pcall(function() PlaceDifficultyVote:InvokeServer(difRestart) end)
-						task.wait(15) -- Give the server time to process restart before hitting the loop again
+						pcall(function()
+							PlaceDifficultyVote:InvokeServer(difRestart)
+						end)
+						task.wait(6) -- Give the server time to process restart before hitting the loop again
 					end
 				end
 			end)
@@ -348,115 +387,121 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					}
 					local success, id = TowerDefense.PlaceUnit(unit, placementTable)
 					if success then
-							addRecord("PlaceUnit", {
-								unit = unit,
-								id = id,
-								position = CF.Position,
-								rotation = rot
-							})
-							
-							local card = Instance.new("Frame")
-							card.Size = UDim2.new(1, 0, 0, 40)
-							card.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-							card.Parent = managerFrame
-							
-							local dispName = tostring(unit)
-							local uConfig = Config:FindFirstChild(unit)
-							if uConfig then
-								local s, c = pcall(require, uConfig)
-								if s and c and c.Name then
-									dispName = c.Name
-								end
+						addRecord("PlaceUnit", {
+							unit = unit,
+							id = id,
+							position = CF.Position,
+							rotation = rot,
+						})
+
+						local card = Instance.new("Frame")
+						card.Size = UDim2.new(1, 0, 0, 40)
+						card.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+						card.Parent = managerFrame
+
+						local dispName = tostring(unit)
+						local uConfig = Config:FindFirstChild(unit)
+						if uConfig then
+							local s, c = pcall(require, uConfig)
+							if s and c and c.Name then
+								dispName = c.Name
 							end
-							
-							local nameLbl = Instance.new("TextLabel")
-							nameLbl.Size = UDim2.new(0.5, 0, 1, 0)
-							nameLbl.BackgroundTransparency = 1
-							nameLbl.Text = dispName
-							nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-							nameLbl.TextScaled = true
-							nameLbl.Parent = card
-							
-							local autoBtn = Instance.new("TextButton")
-							autoBtn.Size = UDim2.new(0.2, 0, 1, -10)
-							autoBtn.Position = UDim2.new(0.5, 0, 0, 5)
-							autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-							autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-							autoBtn.Text = "Auto"
-							autoBtn.TextScaled = true
-							autoBtn.Parent = card
-							
-							local upgBtn = Instance.new("TextButton")
-							upgBtn.Size = UDim2.new(0.3, -5, 1, -10)
-							upgBtn.Position = UDim2.new(0.7, 0, 0, 5)
-							upgBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 100)
-							upgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-							upgBtn.TextScaled = true
-							upgBtn.Parent = card
-							
-							local poolData = {
-								id = id,
-								unitName = unit,
-								unitLevel = 1,
-								active = false
-							}
-							table.insert(autoUpgradePool, poolData)
-							
-							autoBtn.Activated:Connect(function()
-								poolData.active = not poolData.active
-								if poolData.active then
-									autoBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-								else
-									autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-								end
-							end)
-							
-							local function updateUpgText()
-								if uConfig then
-									local sCfg, cfgData = pcall(require, uConfig)
-									if sCfg and cfgData and cfgData.UnitConfig and cfgData.UnitConfig.Upgrades and cfgData.UnitConfig.Upgrades[poolData.unitLevel] then
-										upgBtn.Text = tostring(cfgData.UnitConfig.Upgrades[poolData.unitLevel].Cost)
-									else
-										upgBtn.Text = "Max"
-									end
+						end
+
+						local nameLbl = Instance.new("TextLabel")
+						nameLbl.Size = UDim2.new(0.5, 0, 1, 0)
+						nameLbl.BackgroundTransparency = 1
+						nameLbl.Text = dispName
+						nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+						nameLbl.TextScaled = true
+						nameLbl.Parent = card
+
+						local autoBtn = Instance.new("TextButton")
+						autoBtn.Size = UDim2.new(0.2, 0, 1, -10)
+						autoBtn.Position = UDim2.new(0.5, 0, 0, 5)
+						autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+						autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+						autoBtn.Text = "Auto"
+						autoBtn.TextScaled = true
+						autoBtn.Parent = card
+
+						local upgBtn = Instance.new("TextButton")
+						upgBtn.Size = UDim2.new(0.3, -5, 1, -10)
+						upgBtn.Position = UDim2.new(0.7, 0, 0, 5)
+						upgBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 100)
+						upgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+						upgBtn.TextScaled = true
+						upgBtn.Parent = card
+
+						local poolData = {
+							id = id,
+							unitName = unit,
+							unitLevel = 1,
+							active = false,
+						}
+						table.insert(autoUpgradePool, poolData)
+
+						autoBtn.Activated:Connect(function()
+							poolData.active = not poolData.active
+							if poolData.active then
+								autoBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+							else
+								autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+							end
+						end)
+
+						local function updateUpgText()
+							if uConfig then
+								local sCfg, cfgData = pcall(require, uConfig)
+								if
+									sCfg
+									and cfgData
+									and cfgData.UnitConfig
+									and cfgData.UnitConfig.Upgrades
+									and cfgData.UnitConfig.Upgrades[poolData.unitLevel]
+								then
+									upgBtn.Text = tostring(cfgData.UnitConfig.Upgrades[poolData.unitLevel].Cost)
 								else
 									upgBtn.Text = "Max"
 								end
+							else
+								upgBtn.Text = "Max"
 							end
-							poolData.updateUpgText = updateUpgText
-							updateUpgText()
-							
-							local highlight
-							card.MouseEnter:Connect(function()
-								for _, model in ipairs(Entities:GetChildren()) do
-									if model:GetAttribute("ID") == id then
-										highlight = Instance.new("Highlight")
-										highlight.FillColor = Color3.new(1, 1, 0)
-										highlight.Parent = model
-										break
-									end
-								end
-							end)
-							card.MouseLeave:Connect(function()
-								if highlight then
-									highlight:Destroy()
-									highlight = nil
-								end
-							end)
-							
-							upgBtn.Activated:Connect(function()
-								local s, level = TowerDefense.UpgradeUnit(id)
-								if s then
-									poolData.unitLevel = level
-									updateUpgText()
-									addRecord("UpgradeUnit", { id = id, level = level, unit = unit })
-								end
-							end)
-							
-							managerFrame.CanvasSize = UDim2.new(0, 0, 0, managerList.AbsoluteContentSize.Y)
 						end
+						poolData.updateUpgText = updateUpgText
+						updateUpgText()
+
+						local highlight
+						card.MouseEnter:Connect(function()
+							for _, model in ipairs(Entities:GetChildren()) do
+								if model:GetAttribute("ID") == id then
+									highlight = Instance.new("Highlight")
+									highlight.FillColor = Color3.new(1, 1, 0)
+									highlight.Parent = model
+									break
+								end
+							end
+						end)
+						card.MouseLeave:Connect(function()
+							if highlight then
+								highlight:Destroy()
+								highlight = nil
+							end
+						end)
+
+						upgBtn.Activated:Connect(function()
+							local s, level = TowerDefense.UpgradeUnit(id)
+							if s then
+								poolData.unitLevel = level
+								updateUpgText()
+								addRecord("UpgradeUnit", { id = id, level = level, unit = unit })
+							end
+						end)
+
+						managerFrame.CanvasSize = UDim2.new(0, 0, 0, managerList.AbsoluteContentSize.Y)
 					end
 				end
+			end
 		end
 	end
 end)
@@ -472,22 +517,30 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				recordedQueries = {}
 				managerFrame.Visible = true
 				for _, child in ipairs(managerFrame:GetChildren()) do
-					if child:IsA("Frame") then child:Destroy() end
+					if child:IsA("Frame") then
+						child:Destroy()
+					end
 				end
-				
+
 				autoUpgradePool = {}
 				autoUpgradeLoopRunning = true
 				task.spawn(function()
 					while autoUpgradeLoopRunning and isRecording do
 						local bestUnit = nil
 						local lowestCost = math.huge
-						
+
 						for _, u in ipairs(autoUpgradePool) do
 							if u.active then
 								local cfg = Config:FindFirstChild(u.unitName)
 								if cfg then
 									local s, c = pcall(require, cfg)
-									if s and c and c.UnitConfig and c.UnitConfig.Upgrades and c.UnitConfig.Upgrades[u.unitLevel] then
+									if
+										s
+										and c
+										and c.UnitConfig
+										and c.UnitConfig.Upgrades
+										and c.UnitConfig.Upgrades[u.unitLevel]
+									then
 										local cost = c.UnitConfig.Upgrades[u.unitLevel].Cost
 										if cost and cost < lowestCost then
 											lowestCost = cost
@@ -497,7 +550,7 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 								end
 							end
 						end
-						
+
 						if bestUnit and player:GetAttribute("Cash") >= lowestCost then
 							local s, level = TowerDefense.UpgradeUnit(bestUnit.id)
 							if s then
@@ -507,18 +560,18 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 								task.wait(0.2)
 							end
 						end
-						
+
 						task.wait(0.5)
 					end
 				end)
 			else
 				autoUpgradeLoopRunning = false
 				managerFrame.Visible = false
-				
+
 				local mapId = workspace:GetAttribute("MapId") or "unknown_map"
 				local dif = workspace:GetAttribute("Difficulty") or "dif_normal"
 				local key = mapId .. "_" .. dif
-				
+
 				local saveActions = {}
 				for _, query in ipairs(recordedQueries) do
 					if query.type == "PlaceUnit" then
@@ -526,22 +579,22 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 							type = "PlaceUnit",
 							unit = query.unit,
 							id = query.id,
-							position = {X = query.position.X, Y = query.position.Y, Z = query.position.Z},
-							rotation = query.rotation
+							position = { X = query.position.X, Y = query.position.Y, Z = query.position.Z },
+							rotation = query.rotation,
 						})
 					elseif query.type == "UpgradeUnit" then
 						table.insert(saveActions, {
 							type = "UpgradeUnit",
 							unit = query.unit,
 							id = query.id,
-							level = query.level
+							level = query.level,
 						})
 					end
 				end
-				
+
 				macroConfigs[key] = {
 					dif = dif,
-					actions = saveActions
+					actions = saveActions,
 				}
 				saveMacros()
 				statusLabel.Text = "Status: Saved!"
