@@ -371,11 +371,11 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						pcall(function()
 							RestartGame:InvokeServer()
 						end)
-						task.wait(1)
+						task.wait(.3)
 						pcall(function()
 							PlaceDifficultyVote:InvokeServer(difRestart)
 						end)
-						task.wait(6) -- Give the server time to process restart before hitting the loop again
+						task.wait(5) -- Give the server time to process restart before hitting the loop again
 					end
 				end
 			end)
@@ -551,7 +551,7 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 							end
 						end
 
-						task.wait(0.5)
+						task.wait(0.1)
 					end
 				end)
 			else
