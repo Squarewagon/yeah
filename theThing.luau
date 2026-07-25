@@ -14,17 +14,50 @@ print("loading")
 
 -- local success, err = TowerDefense.SellUnit(id)
 
+--Events
+local FunctionEvents = game:GetService("ReplicatedStorage").RemoteFunctions
+local RemoteEvents = game:GetService("ReplicatedStorage").RemoteEvents
+local ShowGameEnd = RemoteEvents.ShowGameEnd
+local ChangeTargetingMode = RemoteEvents.Entity_ChangeTargetingMode
+local SkipWave = FunctionEvents.SkipWave
+local ChangeTickSpeed = FunctionEvents.ChangeTickSpeed
+local RestartGame = FunctionEvents.RestartGame
+local PlaceDifficultyVote = FunctionEvents.PlaceDifficultyVote
+
+local randomTargetingUnits = {
+	["unit_minions"] = true,
+	["unit_poison_vine"] = true,
+	["unit_gold_lucky_chomp"] = true,
+	-- Add more unit IDs here that should instantly be set to Random targeting!
+}
 local activeMinions = {}
-local function handleMinionSell(model)
+local function handleUnitAdded(model)
 	local name = model.Name
 	if name == "unit_minion1" or name == "unit_minion2" or name == "unit_minion3" then
 		table.insert(activeMinions, model)
 	end
+	
+	if randomTargetingUnits[name] then
+		task.spawn(function()
+			local id = model:GetAttribute("ID")
+			while not id and model.Parent do
+				task.wait()
+				id = model:GetAttribute("ID")
+			end
+			if id then
+				-- Small delay just to ensure server has fully loaded the unit into its lists
+				task.wait(0.2)
+				pcall(function()
+					ChangeTargetingMode:FireServer(id, 7)
+				end)
+			end
+		end)
+	end
 end
 
-Entities.ChildAdded:Connect(handleMinionSell)
+Entities.ChildAdded:Connect(handleUnitAdded)
 for _, model in ipairs(Entities:GetChildren()) do
-	handleMinionSell(model)
+	handleUnitAdded(model)
 end
 
 task.spawn(function()
@@ -81,15 +114,6 @@ local function saveMacros()
 end
 
 local recordedPlacements = {}
-
---Events
-local FunctionEvents = game:GetService("ReplicatedStorage").RemoteFunctions
-local RemoteEvents = game:GetService("ReplicatedStorage").RemoteEvents
-local ShowGameEnd = RemoteEvents.ShowGameEnd
-local SkipWave = FunctionEvents.SkipWave
-local ChangeTickSpeed = FunctionEvents.ChangeTickSpeed
-local RestartGame = FunctionEvents.RestartGame
-local PlaceDifficultyVote = FunctionEvents.PlaceDifficultyVote
 
 -- holding tool
 function selectedUnit()
