@@ -28,7 +28,7 @@ for _, model in ipairs(Entities:GetChildren()) do
 end
 
 task.spawn(function()
-	local rateLimitDelay = 1 / 60
+	local rateLimitDelay = 1 / 100
 	while true do
 		for i = #activeMinions, 1, -1 do
 			if not activeMinions[i].Parent then
@@ -49,10 +49,10 @@ task.spawn(function()
 				end
 			end
 			if not processedAny then
-				task.wait(0.02)
+				task.wait(0.01)
 			end
 		else
-			task.wait(0.02)
+			task.wait(0.01)
 		end
 	end
 end)
