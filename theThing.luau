@@ -88,7 +88,7 @@ task.spawn(function()
 			for _, model in ipairs(activeMinions) do
 				if model.Parent then
 					local level = tonumber(model.Name:match("%d+$")) or 1
-					if level == maxLevel then
+					if level == maxLevel or level == maxLevel - 1 then
 						local id = model:GetAttribute("ID")
 						if id then
 							pcall(function() TowerDefense.SellUnit(id) end)
