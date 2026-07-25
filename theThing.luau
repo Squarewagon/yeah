@@ -12,6 +12,32 @@ print("loading")
 
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
+-- local success, err = TowerDefense.SellUnit(id)
+
+local function handleMinionSell(model)
+	local name = model.Name
+	if name == "unit_minion1" or name == "unit_minion2" or name == "unit_minion3" then
+		task.spawn(function()
+			local id = model:GetAttribute("ID")
+			while not id and model.Parent do
+				task.wait()
+				id = model:GetAttribute("ID")
+			end
+			if id then
+				local success = false
+				while not success and model.Parent do
+					success = TowerDefense.SellUnit(id)
+					task.wait()
+				end
+			end
+		end)
+	end
+end
+
+Entities.ChildAdded:Connect(handleMinionSell)
+for _, model in ipairs(Entities:GetChildren()) do
+	handleMinionSell(model)
+end
 local HttpService = game:GetService("HttpService")
 local SAVE_FILE = "TomatoMacros.json"
 local macroConfigs = {}
