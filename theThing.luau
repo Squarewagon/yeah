@@ -25,8 +25,16 @@ local function handleMinionSell(model)
 			end
 			if id then
 				local success = false
+				local fails = 0
 				while not success and model.Parent do
 					success = TowerDefense.SellUnit(id)
+					if not success then
+						fails = fails + 1
+						if fails >= 3 then
+							id = model:GetAttribute("ID")
+							fails = 0
+						end
+					end
 					task.wait()
 				end
 			end
