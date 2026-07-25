@@ -36,9 +36,17 @@ local randomTargetingUnits = {
 	["unit_gold_lucky_chomp"] = true,
 	-- Add more unit IDs here that should instantly be set to Random targeting!
 }
+-- Expose rateLimit globally so GUI can adjust it
+local currentMinionRateLimit = 14
+
+local activeMinions = {}
+local sellsThisSecond = 0
+local lastSecondTick = os.clock()
+
 local function handleUnitAdded(model)
 	local name = model.Name
 	if name == "unit_minion1" or name == "unit_minion2" or name == "unit_minion3" then
+		table.insert(activeMinions, model)
 		task.spawn(function()
 			local id = model:GetAttribute("ID")
 			while not id and model.Parent do
@@ -46,14 +54,42 @@ local function handleUnitAdded(model)
 				id = model:GetAttribute("ID")
 			end
 			if id then
+				local myLevel = tonumber(name:match("%d+$")) or 1
 				while model.Parent do
-					pcall(function() TowerDefense.SellUnit(id) end)
+					-- Determine max level
+					local maxLevel = 0
+					for i = #activeMinions, 1, -1 do
+						local m = activeMinions[i]
+						if not m.Parent then
+							table.remove(activeMinions, i)
+						else
+							local level = tonumber(m.Name:match("%d+$")) or 1
+							if level > maxLevel then
+								maxLevel = level
+							end
+						end
+					end
+					
+					if myLevel == maxLevel or myLevel == maxLevel - 1 then
+						local now = os.clock()
+						if now - lastSecondTick >= 1 then
+							sellsThisSecond = 0
+							lastSecondTick = now
+						end
+						
+						if sellsThisSecond < currentMinionRateLimit then
+							sellsThisSecond = sellsThisSecond + 1
+							pcall(function()
+								TowerDefense.SellUnit(id)
+							end)
+						end
+					end
 					task.wait() -- Small safety yield
 				end
 			end
 		end)
 	end
-	
+
 	if randomTargetingUnits[name] then
 		task.spawn(function()
 			local id = model:GetAttribute("ID")
@@ -77,10 +113,7 @@ for _, model in ipairs(Entities:GetChildren()) do
 	handleUnitAdded(model)
 end
 
--- Expose rateLimit globally so GUI can adjust it
-local currentMinionRateLimit = 19
-
--- Global loop for minions removed: logic moved to dedicated threads in handleUnitAdded
+-- Global trackers for minions are defined above
 
 local HttpService = game:GetService("HttpService")
 local SAVE_FILE = "TomatoMacros.json"
@@ -277,7 +310,9 @@ end
 
 local function getTrueUnitConfig(unitName)
 	local cfg = Config:FindFirstChild(unitName)
-	if not cfg then return nil end
+	if not cfg then
+		return nil
+	end
 	local s, c = pcall(require, cfg)
 	if s and c then
 		if c.BaseUnit then
@@ -496,7 +531,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						pcall(function()
 							RestartGame:InvokeServer()
 						end)
-						task.wait(.3)
+						task.wait(0.3)
 						pcall(function()
 							PlaceDifficultyVote:InvokeServer(difRestart)
 						end)
