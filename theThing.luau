@@ -327,7 +327,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								if player:GetAttribute("Cash") >= baseCost then
 									break
 								end
-								task.wait(0.1)
+								task.wait(0.05)
 							end
 							if not isPlayingMacro or gameEnded then
 								break
@@ -355,7 +355,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 									else
 										print("Playback: Placed " .. action.unit .. " after " .. attempt .. " retries")
 									end
-									task.wait(0.2) -- Allow server cash replication to catch up
+									task.wait(0.1) -- Allow server cash replication to catch up
 								else
 									attempt = attempt + 1
 									task.wait(0.3)
@@ -373,7 +373,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								if player:GetAttribute("Cash") >= upgCost then
 									break
 								end
-								task.wait(0.1)
+								task.wait(0.05)
 							end
 							if not isPlayingMacro or gameEnded then
 								break
@@ -388,7 +388,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 										print(
 											"Playback: Upgraded " .. action.unit .. " to lvl " .. tostring(action.level)
 										)
-										task.wait(0.2) -- Allow server cash replication to catch up
+										task.wait(0.1) -- Allow server cash replication to catch up
 									else
 										task.wait(0.3)
 									end
