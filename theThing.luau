@@ -14,31 +14,11 @@ print("loading")
 
 -- local success, err = TowerDefense.SellUnit(id)
 
+local activeMinions = {}
 local function handleMinionSell(model)
 	local name = model.Name
 	if name == "unit_minion1" or name == "unit_minion2" or name == "unit_minion3" then
-		task.spawn(function()
-			local id = model:GetAttribute("ID")
-			while not id and model.Parent do
-				task.wait()
-				id = model:GetAttribute("ID")
-			end
-			if id then
-				local success = false
-				local fails = 0
-				while not success and model.Parent do
-					success = TowerDefense.SellUnit(id)
-					if not success then
-						fails = fails + 1
-						if fails >= 3 then
-							id = model:GetAttribute("ID")
-							fails = 0
-						end
-					end
-					task.wait()
-				end
-			end
-		end)
+		table.insert(activeMinions, model)
 	end
 end
 
@@ -46,6 +26,36 @@ Entities.ChildAdded:Connect(handleMinionSell)
 for _, model in ipairs(Entities:GetChildren()) do
 	handleMinionSell(model)
 end
+
+task.spawn(function()
+	local rateLimitDelay = 1 / 13
+	while true do
+		for i = #activeMinions, 1, -1 do
+			if not activeMinions[i].Parent then
+				table.remove(activeMinions, i)
+			end
+		end
+		
+		if #activeMinions > 0 then
+			local processedAny = false
+			for _, model in ipairs(activeMinions) do
+				if model.Parent then
+					local id = model:GetAttribute("ID")
+					if id then
+						pcall(function() TowerDefense.SellUnit(id) end)
+						task.wait(rateLimitDelay)
+						processedAny = true
+					end
+				end
+			end
+			if not processedAny then
+				task.wait(0.1)
+			end
+		else
+			task.wait(0.1)
+		end
+	end
+end)
 local HttpService = game:GetService("HttpService")
 local SAVE_FILE = "TomatoMacros.json"
 local macroConfigs = {}
