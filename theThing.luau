@@ -91,7 +91,9 @@ task.spawn(function()
 					if level == maxLevel or level == maxLevel - 1 then
 						local id = model:GetAttribute("ID")
 						if id then
-							pcall(function() TowerDefense.SellUnit(id) end)
+							task.spawn(function()
+								pcall(function() TowerDefense.SellUnit(id) end)
+							end)
 						end
 					end
 				end
