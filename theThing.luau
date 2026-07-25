@@ -36,60 +36,8 @@ local randomTargetingUnits = {
 	["unit_gold_lucky_chomp"] = true,
 	-- Add more unit IDs here that should instantly be set to Random targeting!
 }
--- Expose rateLimit globally so GUI can adjust it
-local currentMinionRateLimit = 15
-
-local activeMinions = {}
-local sellsThisSecond = 0
-local lastSecondTick = os.clock()
-
 local function handleUnitAdded(model)
 	local name = model.Name
-	if name == "unit_minion1" or name == "unit_minion2" or name == "unit_minion3" then
-		table.insert(activeMinions, model)
-		task.spawn(function()
-			local id = model:GetAttribute("ID")
-			while not id and model.Parent do
-				task.wait()
-				id = model:GetAttribute("ID")
-			end
-			if id then
-				local myLevel = tonumber(name:match("%d+$")) or 1
-				while model.Parent do
-					-- Determine max level
-					local maxLevel = 0
-					for i = #activeMinions, 1, -1 do
-						local m = activeMinions[i]
-						if not m.Parent then
-							table.remove(activeMinions, i)
-						else
-							local level = tonumber(m.Name:match("%d+$")) or 1
-							if level > maxLevel then
-								maxLevel = level
-							end
-						end
-					end
-					
-					if myLevel == maxLevel or myLevel == maxLevel - 1 then
-						local now = os.clock()
-						if now - lastSecondTick >= 1 then
-							sellsThisSecond = 0
-							lastSecondTick = now
-						end
-						
-						if sellsThisSecond < currentMinionRateLimit then
-							sellsThisSecond = sellsThisSecond + 1
-							pcall(function()
-								TowerDefense.SellUnit(id)
-							end)
-						end
-					end
-					task.wait() -- Small safety yield
-				end
-			end
-		end)
-	end
-
 	if randomTargetingUnits[name] then
 		task.spawn(function()
 			local id = model:GetAttribute("ID")
@@ -207,70 +155,6 @@ local managerList = Instance.new("UIListLayout")
 managerList.SortOrder = Enum.SortOrder.LayoutOrder
 managerList.Padding = UDim.new(0, 5)
 managerList.Parent = managerFrame
-
--- Settings Button & Panel
-local settingsBtn = Instance.new("TextButton")
-settingsBtn.Size = UDim2.new(0, 50, 0, 25)
-settingsBtn.Position = UDim2.new(1, -50, 0.5, -115)
-settingsBtn.AnchorPoint = Vector2.new(0, 0)
-settingsBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-settingsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-settingsBtn.TextScaled = true
-settingsBtn.Font = Enum.Font.GothamBold
-settingsBtn.Text = "⚙️"
-settingsBtn.Parent = macroGui
-
-local settingsPanel = Instance.new("Frame")
-settingsPanel.Size = UDim2.new(0, 200, 0, 80)
-settingsPanel.Position = UDim2.new(1, -220, 0.5, -35)
-settingsPanel.AnchorPoint = Vector2.new(0, 0)
-settingsPanel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-settingsPanel.BackgroundTransparency = 0.1
-settingsPanel.Visible = false
-settingsPanel.Parent = macroGui
-
-local settingsTitle = Instance.new("TextLabel")
-settingsTitle.Size = UDim2.new(1, 0, 0, 25)
-settingsTitle.BackgroundTransparency = 1
-settingsTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-settingsTitle.TextScaled = true
-settingsTitle.Font = Enum.Font.GothamBold
-settingsTitle.Text = "Settings"
-settingsTitle.Parent = settingsPanel
-
-local minionRateLabel = Instance.new("TextLabel")
-minionRateLabel.Size = UDim2.new(0.6, 0, 0, 25)
-minionRateLabel.Position = UDim2.new(0, 5, 0, 35)
-minionRateLabel.BackgroundTransparency = 1
-minionRateLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-minionRateLabel.TextScaled = true
-minionRateLabel.Font = Enum.Font.Gotham
-minionRateLabel.Text = "Minion Sell Rate/s:"
-minionRateLabel.TextXAlignment = Enum.TextXAlignment.Left
-minionRateLabel.Parent = settingsPanel
-
-local minionRateInput = Instance.new("TextBox")
-minionRateInput.Size = UDim2.new(0.35, -5, 0, 25)
-minionRateInput.Position = UDim2.new(0.6, 5, 0, 35)
-minionRateInput.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-minionRateInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-minionRateInput.TextScaled = true
-minionRateInput.Font = Enum.Font.Gotham
-minionRateInput.Text = tostring(currentMinionRateLimit)
-minionRateInput.Parent = settingsPanel
-
-settingsBtn.Activated:Connect(function()
-	settingsPanel.Visible = not settingsPanel.Visible
-end)
-
-minionRateInput.FocusLost:Connect(function()
-	local val = tonumber(minionRateInput.Text)
-	if val and val > 0 then
-		currentMinionRateLimit = val
-	else
-		minionRateInput.Text = tostring(currentMinionRateLimit)
-	end
-end)
 
 -- Recording System Toggle
 local UserInputService = game:GetService("UserInputService")
