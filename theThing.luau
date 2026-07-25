@@ -37,7 +37,7 @@ local randomTargetingUnits = {
 	-- Add more unit IDs here that should instantly be set to Random targeting!
 }
 -- Expose rateLimit globally so GUI can adjust it
-local currentMinionRateLimit = 14
+local currentMinionRateLimit = 15
 
 local activeMinions = {}
 local sellsThisSecond = 0
