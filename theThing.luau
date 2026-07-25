@@ -36,11 +36,22 @@ local randomTargetingUnits = {
 	["unit_gold_lucky_chomp"] = true,
 	-- Add more unit IDs here that should instantly be set to Random targeting!
 }
-local activeMinions = {}
 local function handleUnitAdded(model)
 	local name = model.Name
 	if name == "unit_minion1" or name == "unit_minion2" or name == "unit_minion3" then
-		table.insert(activeMinions, model)
+		task.spawn(function()
+			local id = model:GetAttribute("ID")
+			while not id and model.Parent do
+				task.wait()
+				id = model:GetAttribute("ID")
+			end
+			if id then
+				while model.Parent do
+					pcall(function() TowerDefense.SellUnit(id) end)
+					task.wait() -- Small safety yield
+				end
+			end
+		end)
 	end
 	
 	if randomTargetingUnits[name] then
@@ -69,45 +80,8 @@ end
 -- Expose rateLimit globally so GUI can adjust it
 local currentMinionRateLimit = 19
 
-task.spawn(function()
-	while true do
-		for i = #activeMinions, 1, -1 do
-			if not activeMinions[i].Parent then
-				table.remove(activeMinions, i)
-			end
-		end
-		
-		if #activeMinions > 0 then
-			local maxLevel = 0
-			for _, model in ipairs(activeMinions) do
-				if model.Parent then
-					local level = tonumber(model.Name:match("%d+$")) or 1
-					if level > maxLevel then
-						maxLevel = level
-					end
-				end
-			end
-			
-			for _, model in ipairs(activeMinions) do
-				if model.Parent then
-					local level = tonumber(model.Name:match("%d+$")) or 1
-					if level == maxLevel then
-						local id = model:GetAttribute("ID")
-						if id then
-							task.spawn(function()
-								pcall(function() TowerDefense.SellUnit(id) end)
-							end)
-						end
-					end
-				end
-			end
-		end
-		
-		-- Use global rate limit dynamically
-		local rateLimitDelay = (currentMinionRateLimit > 0) and (1 / currentMinionRateLimit) or 0.1
-		task.wait(rateLimitDelay)
-	end
-end)
+-- Global loop for minions removed: logic moved to dedicated threads in handleUnitAdded
+
 local HttpService = game:GetService("HttpService")
 local SAVE_FILE = "TomatoMacros.json"
 local macroConfigs = {}
