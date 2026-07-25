@@ -61,7 +61,7 @@ for _, model in ipairs(Entities:GetChildren()) do
 end
 
 task.spawn(function()
-	local rateLimitDelay = 1 / 100
+	local rateLimitDelay = 1 / 200
 	while true do
 		for i = #activeMinions, 1, -1 do
 			if not activeMinions[i].Parent then
