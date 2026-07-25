@@ -18,11 +18,17 @@ print("loading")
 local FunctionEvents = game:GetService("ReplicatedStorage").RemoteFunctions
 local RemoteEvents = game:GetService("ReplicatedStorage").RemoteEvents
 local ShowGameEnd = RemoteEvents.ShowGameEnd
-local ChangeTargetingMode = RemoteEvents.Entity_ChangeTargetingMode
+local ChangeTargetingMode = RemoteEvents:FindFirstChild("Entity_ChangeTargetingMode")
 local SkipWave = FunctionEvents.SkipWave
 local ChangeTickSpeed = FunctionEvents.ChangeTickSpeed
 local RestartGame = FunctionEvents.RestartGame
 local PlaceDifficultyVote = FunctionEvents.PlaceDifficultyVote
+
+if not ChangeTargetingMode then
+	ChangeTargetingMode = Instance.new("RemoteEvent")
+	ChangeTargetingMode.Name = "Entity_ChangeTargetingMode"
+	ChangeTargetingMode.Parent = RemoteEvents
+end
 
 local randomTargetingUnits = {
 	["unit_minions"] = true,
@@ -61,7 +67,6 @@ for _, model in ipairs(Entities:GetChildren()) do
 end
 
 task.spawn(function()
-	local rateLimitDelay = 1 / 200
 	while true do
 		for i = #activeMinions, 1, -1 do
 			if not activeMinions[i].Parent then
@@ -70,23 +75,29 @@ task.spawn(function()
 		end
 		
 		if #activeMinions > 0 then
-			local processedAny = false
+			local maxLevel = 0
 			for _, model in ipairs(activeMinions) do
 				if model.Parent then
-					local id = model:GetAttribute("ID")
-					if id then
-						pcall(function() TowerDefense.SellUnit(id) end)
-						task.wait(rateLimitDelay)
-						processedAny = true
+					local level = tonumber(model.Name:match("%d+$")) or 1
+					if level > maxLevel then
+						maxLevel = level
 					end
 				end
 			end
-			if not processedAny then
-				task.wait(0.01)
+			
+			for _, model in ipairs(activeMinions) do
+				if model.Parent then
+					local level = tonumber(model.Name:match("%d+$")) or 1
+					if level == maxLevel then
+						local id = model:GetAttribute("ID")
+						if id then
+							pcall(function() TowerDefense.SellUnit(id) end)
+						end
+					end
+				end
 			end
-		else
-			task.wait(0.01)
 		end
+		task.wait()
 	end
 end)
 local HttpService = game:GetService("HttpService")
