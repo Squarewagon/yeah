@@ -67,6 +67,7 @@ for _, model in ipairs(Entities:GetChildren()) do
 end
 
 task.spawn(function()
+	local rateLimitDelay = 1 / 19
 	while true do
 		for i = #activeMinions, 1, -1 do
 			if not activeMinions[i].Parent then
@@ -88,7 +89,7 @@ task.spawn(function()
 			for _, model in ipairs(activeMinions) do
 				if model.Parent then
 					local level = tonumber(model.Name:match("%d+$")) or 1
-					if level == maxLevel or level == maxLevel - 1 then
+					if level == maxLevel then
 						local id = model:GetAttribute("ID")
 						if id then
 							task.spawn(function()
@@ -99,7 +100,7 @@ task.spawn(function()
 				end
 			end
 		end
-		task.wait()
+		task.wait(rateLimitDelay)
 	end
 end)
 local HttpService = game:GetService("HttpService")
