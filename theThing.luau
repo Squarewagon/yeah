@@ -242,8 +242,8 @@ managerList.Parent = managerFrame
 -- Recording System Toggle
 local UserInputService = game:GetService("UserInputService")
 local isRecording = false
-local gPressTime = 0
-local gHeld = false
+local rPressTime = 0
+local rHeld = false
 
 local recordedQueries = {}
 local autoUpgradePool = {}
@@ -303,13 +303,13 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 	if gameProcessedEvent then
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.G then
-		gHeld = true
-		gPressTime = tick()
+	if input.KeyCode == Enum.KeyCode.R then
+		rHeld = true
+		rPressTime = tick()
 
 		task.spawn(function()
-			while gHeld do
-				if tick() - gPressTime >= 2 then
+			while rHeld do
+				if tick() - rPressTime >= 2 then
 					print("deleted")
 					if inputBeganConn then
 						inputBeganConn:Disconnect()
@@ -633,9 +633,9 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 end)
 
 inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
-	if input.KeyCode == Enum.KeyCode.G then
+	if input.KeyCode == Enum.KeyCode.R then
 		-- Only toggle if it was held for LESS than 2 seconds
-		if gHeld and (tick() - gPressTime < 2) then
+		if rHeld and (tick() - rPressTime < 2) then
 			isRecording = not isRecording
 			if isRecording then
 				statusLabel.Text = "Status: Recording"
@@ -718,6 +718,6 @@ inputEndedConn = UserInputService.InputEnded:Connect(function(input, gameProcess
 				print("Saved macro to " .. key .. " in " .. SAVE_FILE)
 			end
 		end
-		gHeld = false
+		rHeld = false
 	end
 end)
