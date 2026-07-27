@@ -12,7 +12,10 @@ print("loading")
 
 -- setclipboard(text: string) | this will copy the text to clipboard, you could also use \n in this to create new line, you don't have to implement it, it just exists.
 
--- local success, err = TowerDefense.SellUnit(id)
+workspace:GetAttribute("Round") -- current wave
+-- workspace.Map.Entities.[ENEMYID].Anchor.HPHolder.HPDisplay.Frame.TextLabel -- HP text label, example: 1M/1M
+-- workspace.Map.Entities.[ENEMYID].Anchor.HPHolder.HPDisplay.Frame.ImageLabel.Health -- check the scale of Size.X, if it's not 1 anymore, health isn't full
+-- local success, message = ActivateUnitAbility:InvokeServer(id)
 
 --Events
 local FunctionEvents = game:GetService("ReplicatedStorage").RemoteFunctions
@@ -23,6 +26,7 @@ local SkipWave = FunctionEvents.SkipWave
 local ChangeTickSpeed = FunctionEvents.ChangeTickSpeed
 local RestartGame = FunctionEvents.RestartGame
 local PlaceDifficultyVote = FunctionEvents.PlaceDifficultyVote
+local ActivateUnitAbility = FunctionEvents.ActivateUnitAbility
 
 if not ChangeTargetingMode then
 	ChangeTargetingMode = Instance.new("RemoteEvent")
@@ -36,8 +40,77 @@ local randomTargetingUnits = {
 	["unit_gold_lucky_chomp"] = true,
 	-- Add more unit IDs here that should instantly be set to Random targeting!
 }
+local cakeId = nil
+local triggeredBosses = {}
+
+ShowGameEnd.OnClientEvent:Connect(function()
+	table.clear(triggeredBosses)
+end)
+
 local function handleUnitAdded(model)
 	local name = model.Name
+	
+	if name == "unit_birthday_cake" then
+		task.spawn(function()
+			local id = model:GetAttribute("ID")
+			while not id and model.Parent do
+				task.wait()
+				id = model:GetAttribute("ID")
+			end
+			if id then
+				cakeId = id
+			end
+		end)
+	end
+	
+	if name == "unit_gold_clover" then
+		task.spawn(function()
+			local id = model:GetAttribute("ID")
+			while not id and model.Parent do
+				task.wait()
+				id = model:GetAttribute("ID")
+			end
+			if id then
+				while model.Parent do
+					task.wait(60)
+					local activated = false
+					while not activated and model.Parent do
+						local pcallSuccess, invokeSuccess = pcall(function()
+							return ActivateUnitAbility:InvokeServer(id)
+						end)
+						if pcallSuccess and invokeSuccess then
+							activated = true
+						else
+							task.wait(1)
+						end
+					end
+				end
+			end
+		end)
+	end
+	
+	if name == "enemy_boss_magma_cube" or name == "enemy_boss_fire_drill" then
+		if triggeredBosses[name] then return end
+		triggeredBosses[name] = true
+		
+		task.spawn(function()
+			local healthBar = model:WaitForChild("Anchor"):WaitForChild("HPHolder"):WaitForChild("HPDisplay"):WaitForChild("Frame"):WaitForChild("ImageLabel"):WaitForChild("Health")
+			
+			if healthBar then
+				local connection
+				local function checkHealth()
+					if healthBar.Size.X.Scale < 1 then
+						if cakeId then
+							pcall(function() ActivateUnitAbility:InvokeServer(cakeId) end)
+						end
+						if connection then connection:Disconnect() end
+					end
+				end
+				connection = healthBar:GetPropertyChangedSignal("Size"):Connect(checkHealth)
+				checkHealth()
+			end
+		end)
+	end
 	if randomTargetingUnits[name] then
 		task.spawn(function()
 			local id = model:GetAttribute("ID")
@@ -415,11 +488,11 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 						pcall(function()
 							RestartGame:InvokeServer()
 						end)
-						task.wait(0.3)
+						task.wait(0.3) -- after restart is called
 						pcall(function()
 							PlaceDifficultyVote:InvokeServer(difRestart)
 						end)
-						task.wait(5) -- Give the server time to process restart before hitting the loop again
+						task.wait(1) -- after vote
 					end
 				end
 			end)
