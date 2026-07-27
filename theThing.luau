@@ -94,19 +94,29 @@ local function handleUnitAdded(model)
 		triggeredBosses[name] = true
 		
 		task.spawn(function()
-			local healthBar = model:WaitForChild("Anchor"):WaitForChild("HPHolder"):WaitForChild("HPDisplay"):WaitForChild("Frame"):WaitForChild("ImageLabel"):WaitForChild("Health")
+			local textLabel = model:WaitForChild("Anchor"):WaitForChild("HPHolder"):WaitForChild("HPDisplay"):WaitForChild("Frame"):WaitForChild("TextLabel")
 			
-			if healthBar then
+			if textLabel then
+				local expectedMaxHealth = (name == "enemy_boss_magma_cube") and "150K/150K" or "1M/1M"
+				local reachedMaxHealth = false
 				local connection
+				
 				local function checkHealth()
-					if healthBar.Size.X.Scale < 1 then
-						if cakeId then
-							pcall(function() ActivateUnitAbility:InvokeServer(cakeId) end)
+					local currentText = textLabel.Text
+					if not reachedMaxHealth then
+						if currentText == expectedMaxHealth then
+							reachedMaxHealth = true
 						end
-						if connection then connection:Disconnect() end
+					else
+						if currentText ~= expectedMaxHealth then
+							if cakeId then
+								pcall(function() ActivateUnitAbility:InvokeServer(cakeId) end)
+							end
+							if connection then connection:Disconnect() end
+						end
 					end
 				end
-				connection = healthBar:GetPropertyChangedSignal("Size"):Connect(checkHealth)
+				connection = textLabel:GetPropertyChangedSignal("Text"):Connect(checkHealth)
 				checkHealth()
 			end
 		end)
