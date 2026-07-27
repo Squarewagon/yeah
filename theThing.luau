@@ -72,7 +72,7 @@ local function handleUnitAdded(model)
 			end
 			if id then
 				while model.Parent do
-					task.wait(60)
+					task.wait(20)
 					local activated = false
 					while not activated and model.Parent do
 						local pcallSuccess, invokeSuccess = pcall(function()
@@ -97,7 +97,7 @@ local function handleUnitAdded(model)
 			local textLabel = model:WaitForChild("Anchor"):WaitForChild("HPHolder"):WaitForChild("HPDisplay"):WaitForChild("Frame"):WaitForChild("TextLabel")
 			
 			if textLabel then
-				local expectedMaxHealth = (name == "enemy_boss_magma_cube") and "150K/150K" or "1M/1M"
+				local expectedMaxHealth = (name == "enemy_boss_magma_cube") and "150k/150k" or "1M/1M"
 				local reachedMaxHealth = false
 				local connection
 				
