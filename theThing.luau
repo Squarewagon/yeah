@@ -351,14 +351,18 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			print("Starting macro playback for " .. key .. "...")
 
 			local sessionStartTime = tick()
-			local runCount = 0
+			local winCount = 0
+			local failCount = 0
+			local totalWinTime = 0
+			
 			task.spawn(function()
 				while isPlayingMacro do
 					local elapsed = tick() - sessionStartTime
 					local hours = math.floor(elapsed / 3600)
 					local mins = math.floor((elapsed % 3600) / 60)
 					local secs = math.floor(elapsed % 60)
-					timerLabel.Text = string.format("Time: %02d:%02d:%02d | Runs: %d", hours, mins, secs, runCount)
+					local avgTime = (winCount > 0) and math.floor(totalWinTime / winCount) or 0
+					timerLabel.Text = string.format("Time: %02d:%02d:%02d | V: %d | F: %d | Avg: %ds", hours, mins, secs, winCount, failCount, avgTime)
 					task.wait(1)
 				end
 				timerLabel.Text = "Time: 00:00:00"
@@ -366,7 +370,6 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 
 			task.spawn(function()
 				while isPlayingMacro do
-					runCount = runCount + 1
 					print("Starting new macro run...")
 					-- Force fast forward
 					pcall(function()
@@ -376,8 +379,22 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					local runActive = true
 					local gameEnded = false
 
-					local endConn = ShowGameEnd.OnClientEvent:Connect(function()
+					local endConn
+					endConn = ShowGameEnd.OnClientEvent:Connect(function(data)
+						if gameEnded then return end
 						gameEnded = true
+						if type(data) == "table" then
+							if data.Victory then
+								winCount = winCount + 1
+								if data.RunTime then
+									totalWinTime = totalWinTime + data.RunTime
+								end
+							else
+								failCount = failCount + 1
+							end
+						else
+							failCount = failCount + 1
+						end
 					end)
 
 					-- Thread to constantly AutoSkip
