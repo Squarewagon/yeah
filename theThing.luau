@@ -89,7 +89,7 @@ local function handleUnitAdded(model)
 		end)
 	end
 	
-	if name == "enemy_boss_magma_cube" or name == "enemy_boss_fire_drill" then
+	if name == "enemy_boss_magma_cube" or name == "enemy_volcanic_snail" or name == "enemy_boss_fire_drill" then
 		if triggeredBosses[name] then return end
 		triggeredBosses[name] = true
 		
@@ -97,7 +97,7 @@ local function handleUnitAdded(model)
 			local textLabel = model:WaitForChild("Anchor"):WaitForChild("HPHolder"):WaitForChild("HPDisplay"):WaitForChild("Frame"):WaitForChild("TextLabel")
 			
 			if textLabel then
-				local expectedMaxHealth = (name == "enemy_boss_magma_cube") and "150k/150k" or "1M/1M"
+				local expectedMaxHealth = (name == "enemy_boss_magma_cube") and "150k/150k" or (name == "enemy_volcanic_snail") and "500k/500k" or "1M/1M"
 				local reachedMaxHealth = false
 				local connection
 				
@@ -436,7 +436,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 							local s, newId
 							local attempt = 0
 							while not s and isPlayingMacro and not gameEnded do
-								local offset = Vector3.new((math.random() * 2 - 1) * 1, 0, (math.random() * 2 - 1) * 1)
+								local offset = Vector3.new((math.random() * 2 - 1) * 0.3, 0, (math.random() * 2 - 1) * 0.3)
 
 								local testPos = Vector3.new(action.position.X, action.position.Y, action.position.Z)
 									+ offset
