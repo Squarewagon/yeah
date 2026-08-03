@@ -57,18 +57,22 @@ local randomTargetingUnits = {
 
 local ceFunc = function(name, data)
 	local id = data and data.ID
-	if not id then return end
-	
+	if not id then
+		return
+	end
+
 	if name == "unit_birthday_cake" then
 		cakeId = id
 	end
-	
+
 	if name == "unit_gold_clover" then
 		local mySession = sessionCounter
 		task.spawn(function()
 			while sessionCounter == mySession do
 				task.wait(60)
-				if sessionCounter ~= mySession then break end
+				if sessionCounter ~= mySession then
+					break
+				end
 				local activated = false
 				while not activated and sessionCounter == mySession do
 					local pcallSuccess, invokeSuccess = pcall(function()
@@ -102,7 +106,9 @@ local ceFunc = function(name, data)
 end
 
 local function toggleGameConnections(remote, customFunc, state)
-	if not remote or not getconnections then return end
+	if not remote or not getconnections then
+		return
+	end
 	task.spawn(function()
 		if state == "Disable" then
 			local conns = getconnections(remote.OnClientEvent)
@@ -120,16 +126,20 @@ local function toggleGameConnections(remote, customFunc, state)
 				task.wait(0.5)
 				conns = getconnections(remote.OnClientEvent)
 			end
-			
+
 			for _, conn in ipairs(getconnections(remote.OnClientEvent)) do
 				if conn.Function ~= customFunc then
-					pcall(function() conn:Disable() end)
+					pcall(function()
+						conn:Disable()
+					end)
 				end
 			end
 		elseif state == "Enable" then
 			for _, conn in ipairs(getconnections(remote.OnClientEvent)) do
 				if conn.Function ~= customFunc then
-					pcall(function() conn:Enable() end)
+					pcall(function()
+						conn:Enable()
+					end)
 				end
 			end
 		end
@@ -143,7 +153,9 @@ local function getTarget(pathString)
 		if current == game and part == "ReplicatedStorage" then
 			current = game:GetService("ReplicatedStorage")
 		else
-			local success, nextInst = pcall(function() return current:WaitForChild(part, 1) end)
+			local success, nextInst = pcall(function()
+				return current:WaitForChild(part, 1)
+			end)
 			if success and nextInst then
 				current = nextInst
 			else
@@ -157,25 +169,26 @@ end
 task.spawn(function()
 	local ce = getTarget("ReplicatedStorage.RemoteEvents.CreateEntity")
 	local hp = getTarget("ReplicatedStorage.RemoteEvents.Entity_HPChanged")
-	
+
 	if ce then
 		ce.OnClientEvent:Connect(ceFunc)
 	end
-	
+
 	if hp then
 		hp.OnClientEvent:Connect(function(id, currentHealth, maxHealth)
 			if activeBossIds[id] then
-					local bossName = activeBossIds[id]
-					activeBossIds[id] = nil
-					
-					if cakeId then
-						task.spawn(function()
-							if bossName == "enemy_boss_magma_cube" then
-								task.wait(1)
-							end
-							pcall(function() ActivateUnitAbility:InvokeServer(cakeId) end)
+				local bossName = activeBossIds[id]
+				activeBossIds[id] = nil
+
+				if cakeId then
+					task.spawn(function()
+						if bossName == "enemy_boss_magma_cube" then
+							task.wait(1)
+						end
+						pcall(function()
+							ActivateUnitAbility:InvokeServer(cakeId)
 						end)
-					end
+					end)
 				end
 			end
 		end)
@@ -294,8 +307,6 @@ local autoUpgradePool = {}
 local autoUpgradeLoopRunning = false
 
 local isPlayingMacro = false
-local toggleDebounce = false
-local waitingForGame = false
 
 local has3xSpeed = false
 task.spawn(function()
@@ -375,68 +386,44 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			end
 		end)
 	elseif input.KeyCode == Enum.KeyCode.V then
-		if isRecording or toggleDebounce then
+		if isRecording then
 			return
 		end
-		toggleDebounce = true
-		task.delay(0.5, function() toggleDebounce = false end)
 
-		if isPlayingMacro or waitingForGame then
+		if isPlayingMacro then
 			isPlayingMacro = false
-			waitingForGame = false
 			local ce = getTarget("ReplicatedStorage.RemoteEvents.CreateEntity")
-			if ce then toggleGameConnections(ce, ceFunc, "Enable") end
+			if ce then
+				toggleGameConnections(ce, ceFunc, "Enable")
+			end
 			for _, path in ipairs(spammyRemotes) do
 				local remote = getTarget(path)
-				if remote then toggleGameConnections(remote, nil, "Enable") end
+				if remote then
+					toggleGameConnections(remote, nil, "Enable")
+				end
 			end
 			statusLabel.Text = "Status: Playback Stopped"
 			print("Macro playback stopped!")
 			return
 		end
 
-		local mapId = workspace:GetAttribute("MapId")
-		local dif = workspace:GetAttribute("Difficulty")
-		if not mapId or not dif then
-			statusLabel.Text = "Status: Not in Game!"
-			return
-		end
-
+		local mapId = workspace:GetAttribute("MapId") or "unknown_map"
+		local dif = workspace:GetAttribute("Difficulty") or "dif_normal"
 		local key = mapId .. "_" .. dif
+
 		local activeMacro = macroConfigs[key]
-		if not activeMacro or not activeMacro.actions or #activeMacro.actions == 0 then
-			statusLabel.Text = "Status: No Macro Found!"
-			return
-		end
-		
-		waitingForGame = true
-		statusLabel.Text = "Status: Waiting for Game..."
-		
-		task.spawn(function()
-			local ce = getTarget("ReplicatedStorage.RemoteEvents.CreateEntity")
-			while ce and waitingForGame do
-				local conns = getconnections(ce.OnClientEvent)
-				local hasOther = false
-				for _, conn in ipairs(conns) do
-					if conn.Function ~= ceFunc then
-						hasOther = true
-						break
-					end
-				end
-				if hasOther then break end
-				task.wait(0.5)
-			end
-			
-			if not waitingForGame then return end
-			waitingForGame = false
+		if activeMacro and activeMacro.actions and #activeMacro.actions > 0 then
 			isPlayingMacro = true
-			
-			if ce then toggleGameConnections(ce, ceFunc, "Disable") end
+			local ce = getTarget("ReplicatedStorage.RemoteEvents.CreateEntity")
+			if ce then
+				toggleGameConnections(ce, ceFunc, "Disable")
+			end
 			for _, path in ipairs(spammyRemotes) do
 				local remote = getTarget(path)
-				if remote then toggleGameConnections(remote, nil, "Disable") end
+				if remote then
+					toggleGameConnections(remote, nil, "Disable")
+				end
 			end
-			
 			statusLabel.Text = "Status: Playing " .. key
 			print("Starting macro playback for " .. key .. "...")
 
@@ -444,7 +431,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			local winCount = 0
 			local failCount = 0
 			local totalWinTime = 0
-			
+
 			task.spawn(function()
 				while isPlayingMacro do
 					local elapsed = tick() - sessionStartTime
@@ -452,7 +439,15 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					local mins = math.floor((elapsed % 3600) / 60)
 					local secs = math.floor(elapsed % 60)
 					local avgTime = (winCount > 0) and math.floor(totalWinTime / winCount) or 0
-					timerLabel.Text = string.format("Time: %02d:%02d:%02d | V: %d | F: %d | Avg: %ds", hours, mins, secs, winCount, failCount, avgTime)
+					timerLabel.Text = string.format(
+						"Time: %02d:%02d:%02d | V: %d | F: %d | Avg: %ds",
+						hours,
+						mins,
+						secs,
+						winCount,
+						failCount,
+						avgTime
+					)
 					task.wait(1)
 				end
 				timerLabel.Text = "Time: 00:00:00"
@@ -471,7 +466,9 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 
 					local endConn
 					endConn = ShowGameEnd.OnClientEvent:Connect(function(data)
-						if gameEnded then return end
+						if gameEnded then
+							return
+						end
 						gameEnded = true
 						if type(data) == "table" then
 							if data.Victory then
@@ -526,7 +523,8 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 							local s, newId
 							local attempt = 0
 							while not s and isPlayingMacro and not gameEnded do
-								local offset = Vector3.new((math.random() * 2 - 1) * 0.3, 0, (math.random() * 2 - 1) * 0.3)
+								local offset =
+									Vector3.new((math.random() * 2 - 1) * 0.3, 0, (math.random() * 2 - 1) * 0.3)
 
 								local testPos = Vector3.new(action.position.X, action.position.Y, action.position.Z)
 									+ offset
@@ -540,7 +538,7 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								s, newId = TowerDefense.PlaceUnit(action.unit, placementTable)
 								if s and newId then
 									idMap[action.id] = newId
-									
+
 									if attempt == 0 then
 										print("Playback: Placed " .. action.unit)
 									else
