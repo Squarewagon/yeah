@@ -164,8 +164,7 @@ task.spawn(function()
 	
 	if hp then
 		hp.OnClientEvent:Connect(function(id, currentHealth, maxHealth)
-			if isPlayingMacro and activeBossIds[id] then
-				if currentHealth < maxHealth then
+			if activeBossIds[id] then
 					local bossName = activeBossIds[id]
 					activeBossIds[id] = nil
 					
@@ -295,6 +294,8 @@ local autoUpgradePool = {}
 local autoUpgradeLoopRunning = false
 
 local isPlayingMacro = false
+local toggleDebounce = false
+local waitingForGame = false
 
 local has3xSpeed = false
 task.spawn(function()
@@ -374,12 +375,15 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			end
 		end)
 	elseif input.KeyCode == Enum.KeyCode.V then
-		if isRecording then
+		if isRecording or toggleDebounce then
 			return
 		end
+		toggleDebounce = true
+		task.delay(0.5, function() toggleDebounce = false end)
 
-		if isPlayingMacro then
+		if isPlayingMacro or waitingForGame then
 			isPlayingMacro = false
+			waitingForGame = false
 			local ce = getTarget("ReplicatedStorage.RemoteEvents.CreateEntity")
 			if ce then toggleGameConnections(ce, ceFunc, "Enable") end
 			for _, path in ipairs(spammyRemotes) do
@@ -391,19 +395,48 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			return
 		end
 
-		local mapId = workspace:GetAttribute("MapId") or "unknown_map"
-		local dif = workspace:GetAttribute("Difficulty") or "dif_normal"
-		local key = mapId .. "_" .. dif
+		local mapId = workspace:GetAttribute("MapId")
+		local dif = workspace:GetAttribute("Difficulty")
+		if not mapId or not dif then
+			statusLabel.Text = "Status: Not in Game!"
+			return
+		end
 
+		local key = mapId .. "_" .. dif
 		local activeMacro = macroConfigs[key]
-		if activeMacro and activeMacro.actions and #activeMacro.actions > 0 then
-			isPlayingMacro = true
+		if not activeMacro or not activeMacro.actions or #activeMacro.actions == 0 then
+			statusLabel.Text = "Status: No Macro Found!"
+			return
+		end
+		
+		waitingForGame = true
+		statusLabel.Text = "Status: Waiting for Game..."
+		
+		task.spawn(function()
 			local ce = getTarget("ReplicatedStorage.RemoteEvents.CreateEntity")
+			while ce and waitingForGame do
+				local conns = getconnections(ce.OnClientEvent)
+				local hasOther = false
+				for _, conn in ipairs(conns) do
+					if conn.Function ~= ceFunc then
+						hasOther = true
+						break
+					end
+				end
+				if hasOther then break end
+				task.wait(0.5)
+			end
+			
+			if not waitingForGame then return end
+			waitingForGame = false
+			isPlayingMacro = true
+			
 			if ce then toggleGameConnections(ce, ceFunc, "Disable") end
 			for _, path in ipairs(spammyRemotes) do
 				local remote = getTarget(path)
 				if remote then toggleGameConnections(remote, nil, "Disable") end
 			end
+			
 			statusLabel.Text = "Status: Playing " .. key
 			print("Starting macro playback for " .. key .. "...")
 
