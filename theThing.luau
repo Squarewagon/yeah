@@ -46,6 +46,36 @@ local spammyRemotes = {
 	-- "ReplicatedStorage.CustomRoutes.BeeLifeOver",
 }
 
+local activeBossIds = {}
+
+local ceFunc = function(name, data)
+	if isPlayingMacro then
+		if name == "enemy_boss_magma_cube" or name == "enemy_volcanic_snail" or name == "enemy_boss_fire_drill" then
+			if data and data.ID then
+				if not triggeredBosses[name] then
+					triggeredBosses[name] = true
+					activeBossIds[data.ID] = name
+				end
+			end
+		end
+	end
+end
+
+local function toggleGameConnections(remote, customFunc, state)
+	if not remote or not getconnections then return end
+	for _, conn in ipairs(getconnections(remote.OnClientEvent)) do
+		if conn.Function ~= customFunc then
+			pcall(function()
+				if state == "Disable" then
+					conn:Disable()
+				elseif state == "Enable" then
+					conn:Enable()
+				end
+			end)
+		end
+	end
+end
+
 task.spawn(function()
 	task.wait(2) -- Allow native scripts to establish their connections first
 	
@@ -70,20 +100,8 @@ task.spawn(function()
 	local ce = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("CreateEntity", 5)
 	local hp = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("Entity_HPChanged", 5)
 	
-	if ce and getconnections then
-		createEntityConns = getconnections(ce.OnClientEvent)
-		ce.OnClientEvent:Connect(function(name, data)
-			if isPlayingMacro then
-				if name == "enemy_boss_magma_cube" or name == "enemy_volcanic_snail" or name == "enemy_boss_fire_drill" then
-					if data and data.ID then
-						if not triggeredBosses[name] then
-							triggeredBosses[name] = true
-							activeBossIds[data.ID] = name
-						end
-					end
-				end
-			end
-		end)
+	if ce then
+		ce.OnClientEvent:Connect(ceFunc)
 	end
 	
 	if hp then
@@ -129,8 +147,6 @@ local randomTargetingUnits = {
 }
 local cakeId = nil
 local triggeredBosses = {}
-
-local activeBossIds = {}
 
 ShowGameEnd.OnClientEvent:Connect(function()
 	table.clear(triggeredBosses)
@@ -425,10 +441,9 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 
 		if isPlayingMacro then
 			isPlayingMacro = false
-			if createEntityConns then
-				for _, conn in ipairs(createEntityConns) do
-					conn:Enable()
-				end
+			local ce = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents") and game:GetService("ReplicatedStorage").RemoteEvents:FindFirstChild("CreateEntity")
+			if ce then
+				toggleGameConnections(ce, ceFunc, "Enable")
 			end
 			statusLabel.Text = "Status: Playback Stopped"
 			print("Macro playback stopped!")
@@ -442,10 +457,9 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 		local activeMacro = macroConfigs[key]
 		if activeMacro and activeMacro.actions and #activeMacro.actions > 0 then
 			isPlayingMacro = true
-			if createEntityConns then
-				for _, conn in ipairs(createEntityConns) do
-					conn:Disable()
-				end
+			local ce = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents") and game:GetService("ReplicatedStorage").RemoteEvents:FindFirstChild("CreateEntity")
+			if ce then
+				toggleGameConnections(ce, ceFunc, "Disable")
 			end
 			statusLabel.Text = "Status: Playing " .. key
 			print("Starting macro playback for " .. key .. "...")
