@@ -35,19 +35,48 @@ if not ChangeTargetingMode then
 end
 
 -- Anti-Lag: Block spammy server remotes
+local spammyRemotes = {
+	"ReplicatedStorage.CustomRoutes.FlyingTargeting",
+	"ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
+	"ReplicatedStorage.RemoteEvents.CashFloat",
+	"ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
+	"ReplicatedStorage.RemoteEvents.EnemyHPBatch",
+	"ReplicatedStorage.CustomRoutes.BeeSpawned",
+	"ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
+	"ReplicatedStorage.CustomRoutes.BeeLifeOver",
+}
+
 task.spawn(function()
-	local cr = game:GetService("ReplicatedStorage"):WaitForChild("CustomRoutes", 5)
-	if cr then
-		local ft = cr:WaitForChild("FlyingTargeting", 5)
-		if ft then
-			task.wait(2) -- Allow native scripts to establish their connections first
+	task.wait(2) -- Allow native scripts to establish their connections first
+	
+	local function getTarget(pathString)
+		local parts = string.split(pathString, ".")
+		local current = game
+		for _, part in ipairs(parts) do
+			if current == game and part == "ReplicatedStorage" then
+				current = game:GetService("ReplicatedStorage")
+			else
+				local success, nextInst = pcall(function() return current:WaitForChild(part, 1) end)
+				if success and nextInst then
+					current = nextInst
+				else
+					return nil
+				end
+			end
+		end
+		return current
+	end
+
+	for _, path in ipairs(spammyRemotes) do
+		local remote = getTarget(path)
+		if remote and remote:IsA("RemoteEvent") then
 			if getconnections then
-				for _, conn in ipairs(getconnections(ft.OnClientEvent)) do
+				for _, conn in ipairs(getconnections(remote.OnClientEvent)) do
 					conn:Disable()
 				end
-				print("Disabled incoming FlyingTargeting remote to reduce lag!")
+				print("Disabled incoming remote to reduce lag: " .. path)
 			else
-				ft:Destroy() -- Fallback if getconnections isn't supported
+				remote:Destroy() -- Fallback if getconnections isn't supported
 			end
 		end
 	end
