@@ -36,14 +36,14 @@ end
 
 -- Anti-Lag: Block spammy server remotes
 local spammyRemotes = {
-	"ReplicatedStorage.CustomRoutes.FlyingTargeting",
-	"ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
-	"ReplicatedStorage.RemoteEvents.CashFloat",
-	"ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
-	"ReplicatedStorage.RemoteEvents.EnemyHPBatch",
-	"ReplicatedStorage.CustomRoutes.BeeSpawned",
-	"ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
-	"ReplicatedStorage.CustomRoutes.BeeLifeOver",
+	-- "ReplicatedStorage.CustomRoutes.FlyingTargeting",
+	-- "ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
+	-- "ReplicatedStorage.RemoteEvents.CashFloat",
+	-- "ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
+	-- "ReplicatedStorage.RemoteEvents.EnemyHPBatch",
+	-- "ReplicatedStorage.CustomRoutes.BeeSpawned",
+	-- "ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
+	-- "ReplicatedStorage.CustomRoutes.BeeLifeOver",
 }
 
 task.spawn(function()
@@ -65,6 +65,45 @@ task.spawn(function()
 			end
 		end
 		return current
+	end
+
+	local ce = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("CreateEntity", 5)
+	local hp = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("Entity_HPChanged", 5)
+	
+	if ce and getconnections then
+		createEntityConns = getconnections(ce.OnClientEvent)
+		ce.OnClientEvent:Connect(function(name, data)
+			if isPlayingMacro then
+				if name == "enemy_boss_magma_cube" or name == "enemy_volcanic_snail" or name == "enemy_boss_fire_drill" then
+					if data and data.ID then
+						if not triggeredBosses[name] then
+							triggeredBosses[name] = true
+							activeBossIds[data.ID] = name
+						end
+					end
+				end
+			end
+		end)
+	end
+	
+	if hp then
+		hp.OnClientEvent:Connect(function(id, currentHealth, maxHealth)
+			if isPlayingMacro and activeBossIds[id] then
+				if currentHealth < maxHealth then
+					local bossName = activeBossIds[id]
+					activeBossIds[id] = nil
+					
+					if cakeId then
+						task.spawn(function()
+							if bossName == "enemy_boss_magma_cube" then
+								task.wait(1)
+							end
+							pcall(function() ActivateUnitAbility:InvokeServer(cakeId) end)
+						end)
+					end
+				end
+			end
+		end)
 	end
 
 	for _, path in ipairs(spammyRemotes) do
@@ -91,8 +130,11 @@ local randomTargetingUnits = {
 local cakeId = nil
 local triggeredBosses = {}
 
+local activeBossIds = {}
+
 ShowGameEnd.OnClientEvent:Connect(function()
 	table.clear(triggeredBosses)
+	table.clear(activeBossIds)
 end)
 
 local function handleUnitAdded(model)
@@ -383,6 +425,11 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 
 		if isPlayingMacro then
 			isPlayingMacro = false
+			if createEntityConns then
+				for _, conn in ipairs(createEntityConns) do
+					conn:Enable()
+				end
+			end
 			statusLabel.Text = "Status: Playback Stopped"
 			print("Macro playback stopped!")
 			return
@@ -395,6 +442,11 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 		local activeMacro = macroConfigs[key]
 		if activeMacro and activeMacro.actions and #activeMacro.actions > 0 then
 			isPlayingMacro = true
+			if createEntityConns then
+				for _, conn in ipairs(createEntityConns) do
+					conn:Disable()
+				end
+			end
 			statusLabel.Text = "Status: Playing " .. key
 			print("Starting macro playback for " .. key .. "...")
 
@@ -498,6 +550,30 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 								s, newId = TowerDefense.PlaceUnit(action.unit, placementTable)
 								if s and newId then
 									idMap[action.id] = newId
+									
+									if action.unit == "unit_birthday_cake" then
+										cakeId = newId
+									elseif action.unit == "unit_gold_clover" then
+										task.spawn(function()
+											local id = newId
+											while isPlayingMacro do
+												task.wait(60)
+												if not isPlayingMacro then break end
+												local activated = false
+												while not activated and isPlayingMacro do
+													local pcallSuccess, invokeSuccess = pcall(function()
+														return ActivateUnitAbility:InvokeServer(id)
+													end)
+													if pcallSuccess and invokeSuccess then
+														activated = true
+													else
+														task.wait(1)
+													end
+												end
+											end
+										end)
+									end
+									
 									if attempt == 0 then
 										print("Playback: Placed " .. action.unit)
 									else
