@@ -34,6 +34,25 @@ if not ChangeTargetingMode then
 	ChangeTargetingMode.Parent = RemoteEvents
 end
 
+-- Anti-Lag: Block spammy server remotes
+task.spawn(function()
+	local cr = game:GetService("ReplicatedStorage"):WaitForChild("CustomRoutes", 5)
+	if cr then
+		local ft = cr:WaitForChild("FlyingTargeting", 5)
+		if ft then
+			task.wait(2) -- Allow native scripts to establish their connections first
+			if getconnections then
+				for _, conn in ipairs(getconnections(ft.OnClientEvent)) do
+					conn:Disable()
+				end
+				print("Disabled incoming FlyingTargeting remote to reduce lag!")
+			else
+				ft:Destroy() -- Fallback if getconnections isn't supported
+			end
+		end
+	end
+end)
+
 local randomTargetingUnits = {
 	["unit_minions"] = true,
 	["unit_poison_vine"] = true,
