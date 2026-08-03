@@ -32,7 +32,6 @@ end
 -- Anti-Lag: Block spammy server remotes
 local spammyRemotes = {
 	"ReplicatedStorage.CustomRoutes.FlyingTargeting",
-	"ReplicatedStorage.RemoteEvents.Entity_LockOnTarget",
 	"ReplicatedStorage.RemoteEvents.Entity_AttackTarget",
 	"ReplicatedStorage.RemoteEvents.Entity_UpdateRandomPos",
 	"ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
@@ -105,6 +104,22 @@ local ceFunc = function(name, data)
 	end
 end
 
+local lockFunc = function(unitId, targetId)
+	if targetId and activeBossIds[targetId] then
+		local bossName = activeBossIds[targetId]
+		activeBossIds[targetId] = nil
+		
+		if cakeId then
+			task.spawn(function()
+				if bossName == "enemy_boss_magma_cube" then
+					task.wait(1)
+				end
+				pcall(function() ActivateUnitAbility:InvokeServer(cakeId) end)
+			end)
+		end
+	end
+end
+
 local function toggleGameConnections(remote, customFunc, state)
 	if not remote or not getconnections then
 		return
@@ -168,30 +183,14 @@ end
 
 task.spawn(function()
 	local ce = getTarget("ReplicatedStorage.RemoteEvents.CreateEntity")
-	local hp = getTarget("ReplicatedStorage.RemoteEvents.Entity_HPChanged")
+	local lock = getTarget("ReplicatedStorage.RemoteEvents.Entity_LockOnTarget")
 
 	if ce then
 		ce.OnClientEvent:Connect(ceFunc)
 	end
 
-	if hp then
-		hp.OnClientEvent:Connect(function(id, currentHealth, maxHealth)
-			if activeBossIds[id] then
-				local bossName = activeBossIds[id]
-				activeBossIds[id] = nil
-
-				if cakeId then
-					task.spawn(function()
-						if bossName == "enemy_boss_magma_cube" then
-							task.wait(1)
-						end
-						pcall(function()
-							ActivateUnitAbility:InvokeServer(cakeId)
-						end)
-					end)
-				end
-			end
-		end)
+	if lock then
+		lock.OnClientEvent:Connect(lockFunc)
 	end
 end)
 
@@ -396,6 +395,10 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			if ce then
 				toggleGameConnections(ce, ceFunc, "Enable")
 			end
+			local lock = getTarget("ReplicatedStorage.RemoteEvents.Entity_LockOnTarget")
+			if lock then
+				toggleGameConnections(lock, lockFunc, "Enable")
+			end
 			for _, path in ipairs(spammyRemotes) do
 				local remote = getTarget(path)
 				if remote then
@@ -417,6 +420,10 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			local ce = getTarget("ReplicatedStorage.RemoteEvents.CreateEntity")
 			if ce then
 				toggleGameConnections(ce, ceFunc, "Disable")
+			end
+			local lock = getTarget("ReplicatedStorage.RemoteEvents.Entity_LockOnTarget")
+			if lock then
+				toggleGameConnections(lock, lockFunc, "Disable")
 			end
 			for _, path in ipairs(spammyRemotes) do
 				local remote = getTarget(path)
