@@ -32,16 +32,16 @@ end
 
 -- Anti-Lag: Block spammy server remotes
 local spammyRemotes = {
-	"ReplicatedStorage.CustomRoutes.FlyingTargeting",
-	"ReplicatedStorage.RemoteEvents.Entity_AttackTarget",
-	"ReplicatedStorage.RemoteEvents.Entity_UpdateRandomPos",
-	"ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
-	"ReplicatedStorage.RemoteEvents.CashFloat",
+	-- "ReplicatedStorage.CustomRoutes.FlyingTargeting",
+	-- "ReplicatedStorage.RemoteEvents.Entity_AttackTarget",
+	-- "ReplicatedStorage.RemoteEvents.Entity_UpdateRandomPos",
+	-- "ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
+	-- "ReplicatedStorage.RemoteEvents.CashFloat",
 	-- "ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
-	"ReplicatedStorage.RemoteEvents.EnemyHPBatch",
-	"ReplicatedStorage.CustomRoutes.BeeSpawned",
-	"ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
-	"ReplicatedStorage.CustomRoutes.BeeLifeOver",
+	-- "ReplicatedStorage.RemoteEvents.EnemyHPBatch",
+	-- "ReplicatedStorage.CustomRoutes.BeeSpawned",
+	-- "ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
+	-- "ReplicatedStorage.CustomRoutes.BeeLifeOver",
 }
 
 local cakeId = nil
