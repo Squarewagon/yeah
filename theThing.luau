@@ -439,8 +439,8 @@ task.spawn(function()
 				
 				customRangeDisplay = originalDisplay:Clone()
 				customRangeDisplay.Name = "MaxRangeDisplay"
-				customRangeDisplay.Color = Color3.new(1, 0, 0)
-				customRangeDisplay.Size = Vector3.new(0.5, maxRange * 2, maxRange * 2)
+				customRangeDisplay.Color = Color3.new(1, 0.607843, 0.607843)
+				customRangeDisplay.Size = Vector3.new(0.55, maxRange * 2, maxRange * 2)
 				customRangeDisplay.Parent = effectModel
 				lastUnitId = currentUnitName
 			end
