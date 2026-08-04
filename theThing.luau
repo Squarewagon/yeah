@@ -16,6 +16,7 @@ workspace:GetAttribute("Round") -- current wave
 local FunctionEvents = game:GetService("ReplicatedStorage").RemoteFunctions
 local RemoteEvents = game:GetService("ReplicatedStorage").RemoteEvents
 local ShowGameEnd = RemoteEvents.ShowGameEnd
+local DestroyEntity = RemoteEvents.DestroyEntity
 local ChangeTargetingMode = RemoteEvents:FindFirstChild("Entity_ChangeTargetingMode")
 local SkipWave = FunctionEvents.SkipWave
 local ChangeTickSpeed = FunctionEvents.ChangeTickSpeed
@@ -36,7 +37,7 @@ local spammyRemotes = {
 	"ReplicatedStorage.RemoteEvents.Entity_UpdateRandomPos",
 	"ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
 	"ReplicatedStorage.RemoteEvents.CashFloat",
-	"ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
+	-- "ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
 	"ReplicatedStorage.RemoteEvents.EnemyHPBatch",
 	"ReplicatedStorage.CustomRoutes.BeeSpawned",
 	"ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
@@ -46,29 +47,12 @@ local spammyRemotes = {
 local cakeId = nil
 local triggeredBosses = {}
 local activeBossIds = {}
+local aliveBossIds = {}
 local sessionCounter = 0
 
-local minion1Id = nil
-local minion2Id = nil
-local minion3Id = nil
-task.spawn(function()
-	while true do
-		task.wait(1 / 14)
-		local targetId = nil
-		if minion3Id then
-			targetId = minion3Id
-			minion3Id = nil
-		elseif minion2Id then
-			targetId = minion2Id
-			minion2Id = nil
-		elseif minion1Id then
-			targetId = minion1Id
-			minion1Id = nil
-		end
-		
-		if targetId then
-			task.spawn(function() pcall(function() TowerDefense.SellUnit(targetId) end) end)
-		end
+DestroyEntity.OnClientEvent:Connect(function(id)
+	if aliveBossIds[id] then
+		aliveBossIds[id] = nil
 	end
 end)
 
@@ -86,14 +70,6 @@ local ceFunc = function(name, data)
 
 	if name == "unit_birthday_cake" then
 		cakeId = id
-	end
-	
-	if name == "unit_minion1" then
-		minion1Id = id
-	elseif name == "unit_minion2" then
-		minion2Id = id
-	elseif name == "unit_minion3" then
-		minion3Id = id
 	end
 
 	if name == "unit_gold_clover" then
@@ -119,8 +95,9 @@ local ceFunc = function(name, data)
 		end)
 	end
 
-	if name == "enemy_boss_magma_cube" or name == "enemy_volcanic_snail" or name == "enemy_boss_fire_drill" then
-		if not triggeredBosses[name] then
+	if name == "enemy_boss_magma_cube" or name == "enemy_volcanic_snail" or name == "enemy_boss_fire_drill" or name == "enemy_boss_magma_spider" then
+		aliveBossIds[id] = true
+		if name == "enemy_boss_magma_spider" or not triggeredBosses[name] then
 			triggeredBosses[name] = true
 			activeBossIds[id] = name
 		end
@@ -146,9 +123,28 @@ local lockFunc = function(unitId, targetId)
 				if bossName == "enemy_boss_magma_cube" then
 					task.wait(1)
 				end
-				pcall(function()
-					ActivateUnitAbility:InvokeServer(cakeId)
-				end)
+				
+				local mySession = sessionCounter
+				while aliveBossIds[targetId] and sessionCounter == mySession do
+					local activated = false
+					while not activated and aliveBossIds[targetId] and sessionCounter == mySession do
+						local pcallSuccess, invokeSuccess = pcall(function()
+							return ActivateUnitAbility:InvokeServer(cakeId)
+						end)
+						if pcallSuccess and invokeSuccess then
+							activated = true
+						else
+							task.wait(1)
+						end
+					end
+					
+					if not (aliveBossIds[targetId] and sessionCounter == mySession) then
+						break
+					end
+					
+					local ts = workspace:GetAttribute("TickSpeed") or 1
+					task.wait(60 / ts)
+				end
 			end)
 		end
 	end
@@ -249,10 +245,9 @@ end)
 ShowGameEnd.OnClientEvent:Connect(function()
 	table.clear(triggeredBosses)
 	table.clear(activeBossIds)
+	table.clear(aliveBossIds)
 	sessionCounter = sessionCounter + 1
 end)
-
--- Global trackers for minions are defined above
 
 local HttpService = game:GetService("HttpService")
 local SAVE_FILE = "TomatoMacros.json"
@@ -535,9 +530,13 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 					task.spawn(function()
 						while runActive and isPlayingMacro and not gameEnded do
 							if game.Workspace:GetAttribute("CanSkipWave") then
-								pcall(function()
-									SkipWave:InvokeServer("y")
-								end)
+								local round = workspace:GetAttribute("Round") or 0
+								local mapId = workspace:GetAttribute("MapId") or ""
+								if not (mapId == "map_volcano" and round >= 31) then
+									pcall(function()
+										SkipWave:InvokeServer("y")
+									end)
+								end
 							end
 							task.wait(0.5)
 						end
