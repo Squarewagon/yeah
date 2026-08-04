@@ -32,16 +32,16 @@ end
 
 -- Anti-Lag: Block spammy server remotes
 local spammyRemotes = {
-	-- "ReplicatedStorage.CustomRoutes.FlyingTargeting",
-	-- "ReplicatedStorage.RemoteEvents.Entity_AttackTarget",
-	-- "ReplicatedStorage.RemoteEvents.Entity_UpdateRandomPos",
-	-- "ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
-	-- "ReplicatedStorage.RemoteEvents.CashFloat",
-	-- "ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
-	-- "ReplicatedStorage.RemoteEvents.EnemyHPBatch",
-	-- "ReplicatedStorage.CustomRoutes.BeeSpawned",
-	-- "ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
-	-- "ReplicatedStorage.CustomRoutes.BeeLifeOver",
+	"ReplicatedStorage.CustomRoutes.FlyingTargeting",
+	"ReplicatedStorage.RemoteEvents.Entity_AttackTarget",
+	"ReplicatedStorage.RemoteEvents.Entity_UpdateRandomPos",
+	"ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
+	"ReplicatedStorage.RemoteEvents.CashFloat",
+	"ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
+	"ReplicatedStorage.RemoteEvents.EnemyHPBatch",
+	"ReplicatedStorage.CustomRoutes.BeeSpawned",
+	"ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
+	"ReplicatedStorage.CustomRoutes.BeeLifeOver",
 }
 
 local cakeId = nil
@@ -228,8 +228,17 @@ task.spawn(function()
 			for i = #spammyRemotes, 1, -1 do
 				local remote = getTarget(spammyRemotes[i])
 				if remote then
-					pcall(function()
-						remote:Destroy()
+					task.spawn(function()
+						local conns = getconnections(remote.OnClientEvent)
+						while #conns == 0 do
+							task.wait(0.5)
+							conns = getconnections(remote.OnClientEvent)
+						end
+						for _, conn in ipairs(conns) do
+							pcall(function()
+								conn:Disable()
+							end)
+						end
 					end)
 					table.remove(spammyRemotes, i)
 				end
