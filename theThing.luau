@@ -48,6 +48,30 @@ local triggeredBosses = {}
 local activeBossIds = {}
 local sessionCounter = 0
 
+local minion1Id = nil
+local minion2Id = nil
+local minion3Id = nil
+task.spawn(function()
+	while true do
+		task.wait(1 / 14)
+		local targetId = nil
+		if minion3Id then
+			targetId = minion3Id
+			minion3Id = nil
+		elseif minion2Id then
+			targetId = minion2Id
+			minion2Id = nil
+		elseif minion1Id then
+			targetId = minion1Id
+			minion1Id = nil
+		end
+		
+		if targetId then
+			task.spawn(function() pcall(function() TowerDefense.SellUnit(targetId) end) end)
+		end
+	end
+end)
+
 local randomTargetingUnits = {
 	["unit_minions"] = true,
 	["unit_poison_vine"] = true,
@@ -62,6 +86,14 @@ local ceFunc = function(name, data)
 
 	if name == "unit_birthday_cake" then
 		cakeId = id
+	end
+	
+	if name == "unit_minion1" then
+		minion1Id = id
+	elseif name == "unit_minion2" then
+		minion2Id = id
+	elseif name == "unit_minion3" then
+		minion3Id = id
 	end
 
 	if name == "unit_gold_clover" then
@@ -108,13 +140,15 @@ local lockFunc = function(unitId, targetId)
 	if targetId and activeBossIds[targetId] then
 		local bossName = activeBossIds[targetId]
 		activeBossIds[targetId] = nil
-		
+
 		if cakeId then
 			task.spawn(function()
 				if bossName == "enemy_boss_magma_cube" then
 					task.wait(1)
 				end
-				pcall(function() ActivateUnitAbility:InvokeServer(cakeId) end)
+				pcall(function()
+					ActivateUnitAbility:InvokeServer(cakeId)
+				end)
 			end)
 		end
 	end
@@ -192,6 +226,24 @@ task.spawn(function()
 	if lock then
 		lock.OnClientEvent:Connect(lockFunc)
 	end
+
+	task.spawn(function()
+		while true do
+			for i = #spammyRemotes, 1, -1 do
+				local remote = getTarget(spammyRemotes[i])
+				if remote then
+					pcall(function()
+						remote:Destroy()
+					end)
+					table.remove(spammyRemotes, i)
+				end
+			end
+			if #spammyRemotes == 0 then
+				break
+			end
+			task.wait(1)
+		end
+	end)
 end)
 
 ShowGameEnd.OnClientEvent:Connect(function()
@@ -399,12 +451,6 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			if lock then
 				toggleGameConnections(lock, lockFunc, "Enable")
 			end
-			for _, path in ipairs(spammyRemotes) do
-				local remote = getTarget(path)
-				if remote then
-					toggleGameConnections(remote, nil, "Enable")
-				end
-			end
 			statusLabel.Text = "Status: Playback Stopped"
 			print("Macro playback stopped!")
 			return
@@ -424,12 +470,6 @@ inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcess
 			local lock = getTarget("ReplicatedStorage.RemoteEvents.Entity_LockOnTarget")
 			if lock then
 				toggleGameConnections(lock, lockFunc, "Disable")
-			end
-			for _, path in ipairs(spammyRemotes) do
-				local remote = getTarget(path)
-				if remote then
-					toggleGameConnections(remote, nil, "Disable")
-				end
 			end
 			statusLabel.Text = "Status: Playing " .. key
 			print("Starting macro playback for " .. key .. "...")
