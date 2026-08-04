@@ -44,6 +44,8 @@ local spammyRemotes = {
 	"ReplicatedStorage.CustomRoutes.BeeLifeOver",
 }
 
+local isPlayingMacro = false
+
 local cakeId = nil
 local triggeredBosses = {}
 local activeBossIds = {}
@@ -361,8 +363,6 @@ local recordedQueries = {}
 local autoUpgradePool = {}
 local autoUpgradeLoopRunning = false
 
-local isPlayingMacro = false
-
 local has3xSpeed = false
 task.spawn(function()
 	pcall(function()
@@ -407,6 +407,56 @@ local function getTrueUnitConfig(unitName)
 	end
 	return nil
 end
+
+task.spawn(function()
+	local lastUnitId = nil
+	local customRangeDisplay = nil
+
+	while true do
+		task.wait(0.05)
+		local currentUnitName = selectedUnit()
+		local effectModel = currentUnitName and workspace.EffectHolder:FindFirstChild(currentUnitName)
+		local originalDisplay = effectModel and effectModel:FindFirstChild("RangeDisplay")
+
+		if currentUnitName and effectModel and originalDisplay then
+			if currentUnitName ~= lastUnitId or not customRangeDisplay or not customRangeDisplay.Parent then
+				if customRangeDisplay then
+					customRangeDisplay:Destroy()
+				end
+				
+				local maxRange = 0
+				local trueConfig = getTrueUnitConfig(currentUnitName)
+				if trueConfig then
+					maxRange = trueConfig.Range or 0
+					if trueConfig.Upgrades then
+						for _, upg in ipairs(trueConfig.Upgrades) do
+							if upg.Changes and upg.Changes.Range then
+								maxRange = math.max(maxRange, upg.Changes.Range)
+							end
+						end
+					end
+				end
+				
+				customRangeDisplay = originalDisplay:Clone()
+				customRangeDisplay.Name = "MaxRangeDisplay"
+				customRangeDisplay.Color = Color3.new(1, 0, 0)
+				customRangeDisplay.Size = Vector3.new(0.5, maxRange * 2, maxRange * 2)
+				customRangeDisplay.Parent = effectModel
+				lastUnitId = currentUnitName
+			end
+			
+			if customRangeDisplay then
+				customRangeDisplay.CFrame = originalDisplay.CFrame
+			end
+		else
+			if customRangeDisplay then
+				customRangeDisplay:Destroy()
+				customRangeDisplay = nil
+			end
+			lastUnitId = nil
+		end
+	end
+end)
 
 local inputBeganConn
 local inputEndedConn
