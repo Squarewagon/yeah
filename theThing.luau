@@ -97,6 +97,23 @@ local ceFunc = function(name, data)
 		end)
 	end
 
+	if name == "unit_stem_beam" then
+		local mySession = sessionCounter
+		task.spawn(function()
+			local activated = false
+			while not activated and sessionCounter == mySession do
+				local pcallSuccess, invokeSuccess = pcall(function()
+					return ActivateUnitAbility:InvokeServer(id)
+				end)
+				if pcallSuccess and invokeSuccess then
+					activated = true
+				else
+					task.wait(1)
+				end
+			end
+		end)
+	end
+
 	if name == "enemy_boss_magma_cube" or name == "enemy_volcanic_snail" or name == "enemy_boss_fire_drill" or name == "enemy_boss_magma_spider" then
 		aliveBossIds[id] = true
 		if name == "enemy_boss_magma_spider" or not triggeredBosses[name] then
