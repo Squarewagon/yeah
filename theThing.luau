@@ -31,17 +31,20 @@ if not ChangeTargetingMode then
 end
 
 -- Anti-Lag: Block spammy server remotes
-local spammyRemotes = {
+local remotesToDisable = {
 	"ReplicatedStorage.CustomRoutes.FlyingTargeting",
+	"ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
 	"ReplicatedStorage.RemoteEvents.Entity_AttackTarget",
 	"ReplicatedStorage.RemoteEvents.Entity_UpdateRandomPos",
 	"ReplicatedStorage.RemoteEvents.Entity_ServerPosUpdated",
 	"ReplicatedStorage.RemoteEvents.CashFloat",
-	"ReplicatedStorage.RemoteEvents.Entity_StatMetricUpdated",
 	"ReplicatedStorage.RemoteEvents.EnemyHPBatch",
 	"ReplicatedStorage.CustomRoutes.BeeSpawned",
 	"ReplicatedStorage.CustomRoutes.BeeTargetUpdated",
 	"ReplicatedStorage.CustomRoutes.BeeLifeOver",
+}
+
+local remotesToDestroy = {
 }
 
 local isPlayingMacro = false
@@ -62,6 +65,8 @@ local randomTargetingUnits = {
 	["unit_minions"] = true,
 	["unit_poison_vine"] = true,
 	["unit_gold_lucky_chomp"] = true,
+	["unit_frozen_plant"] = true,
+	["unit_gold_lucky_lunger"] = true,
 }
 
 local ceFunc = function(name, data)
@@ -244,8 +249,8 @@ task.spawn(function()
 
 	task.spawn(function()
 		while true do
-			for i = #spammyRemotes, 1, -1 do
-				local remote = getTarget(spammyRemotes[i])
+			for i = #remotesToDisable, 1, -1 do
+				local remote = getTarget(remotesToDisable[i])
 				if remote then
 					task.spawn(function()
 						local conns = getconnections(remote.OnClientEvent)
@@ -259,10 +264,21 @@ task.spawn(function()
 							end)
 						end
 					end)
-					table.remove(spammyRemotes, i)
+					table.remove(remotesToDisable, i)
 				end
 			end
-			if #spammyRemotes == 0 then
+			
+			for i = #remotesToDestroy, 1, -1 do
+				local remote = getTarget(remotesToDestroy[i])
+				if remote then
+					pcall(function()
+						remote:Destroy()
+					end)
+					table.remove(remotesToDestroy, i)
+				end
+			end
+			
+			if #remotesToDisable == 0 and #remotesToDestroy == 0 then
 				break
 			end
 			task.wait(1)
